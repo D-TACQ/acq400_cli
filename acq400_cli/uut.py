@@ -696,7 +696,7 @@ class Carrier:
     def set_spad1_count(self, enabled=True, site=None, sense=1):
         """enable or disable spad1 microsecond count"""
         enabled = 1 if enabled else 0
-        line = site if site else self.ai_master.site
+        line = site if site else self.ai_master.site + 1
         self.s0.spad1_us = f"{enabled},{line},{sense}"
 
     def get_counter_freq(self, signal="TRG", line=-1):
