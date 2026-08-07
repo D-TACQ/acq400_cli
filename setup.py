@@ -32,7 +32,7 @@ setup(
     url="http://eigg/GIT/Software/?p=acq400_cli",
     packages=find_packages(),
     classifiers=[],
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     install_requires=read_requirements(),
     extras_require={},
     entry_points={
