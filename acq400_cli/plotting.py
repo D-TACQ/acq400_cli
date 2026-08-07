@@ -31,6 +31,7 @@ class FigSpec:
     drawstyle: str              #  draw style (`default`, `steps`, `steps-pre`, `steps-mid`, `steps-post`)
     linestyle: str              #  line style (`-`, `--`, `:`, `-.`)
     color: str | None           #  trace color, or None to use default color cycle
+    y_label: str | None         #  override y axis label
 
 
     @classmethod
@@ -62,6 +63,7 @@ class FigSpec:
             drawstyle=spec.get("drawstyle",'default'),
             linestyle=spec.get("linestyle", '-'),
             color=spec.get("color", None),
+            y_label=spec.get("y_label", None),
         )
 
     @classmethod
@@ -388,8 +390,10 @@ class Plotter:
 
                 x = self.timebase[index]
 
-                if not row.get_ylabel():
-                    if spec.view == 'VOLTS':
+                if not row.get_ylabel() or spec.y_label:
+                    if spec.y_label:
+                        y_label = spec.y_label
+                    elif spec.view == 'VOLTS':
                         y_label = 'Volts (V)'
                     elif spec.view == 'POWER':
                         y_label = 'Power (mW)'
