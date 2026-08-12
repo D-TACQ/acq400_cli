@@ -213,14 +213,19 @@ class Site:
     @property
     def gains(self):
         """return channel gains array"""
+        # EPICS knob slow but enum fast so build lookup table for speed
         gains = []
+        lookup_table = {}
         try:
             for chan in range(1, self.nchan + 1):
-                gain = self.get(f"gain{chan}")
-
-                if gain.startswith('M'):
-                    gain = gain.removeprefix('M')
-                lower, upper = gain.split('-')
+                lookup_id = self.get(f"gain{chan}")
+                gain = lookup_table.get(lookup_id)
+                if not gain:
+                    gain = self.get(f"GAIN__{chan:02d}").removeprefix('+/-').removesuffix('V')
+                    lookup_table[lookup_id] = gain
+                lower = upper = gain
+                if '-' in gain:
+                    lower, upper = gain.split('-')
                 gains.append((-abs(float(lower)), float(upper)))
             return gains
         except: return None
