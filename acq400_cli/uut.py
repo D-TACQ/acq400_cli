@@ -322,6 +322,13 @@ class Carrier:
         """Return the data rate with mask"""
         sample_format = StreamSample(self)
         return (sample_format.bytes * self.sample_rate) / 1_000_000
+
+    @property
+    def within_speed_limit(self):
+        """True if data rate is too fast else False"""
+        data_rate = self.data_rate
+        max_rate = 760 if self.s0.MODEL.lower().startswith('acq1001') else 960
+        return data_rate > max_rate
     
     @property
     def stream_enabled(self):
