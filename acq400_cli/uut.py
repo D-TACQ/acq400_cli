@@ -205,6 +205,7 @@ class Carrier:
 
     @property
     def es_width(self):
+        """Return the width of the es in samples"""
         es_size = 32
         if self.ai_master.model.upper().startswith('ACQ48'): es_size = 16
         sample_size = self.ai_master.nchan * self.ai_master.data_size
@@ -278,6 +279,8 @@ class Carrier:
         """sample rate"""
         if self.ai_master.model.upper().startswith('ACQ48'):
             clk = self.ai_master.ACQ480__OSR
+        elif self.ai_master.model.upper().startswith('ACQ43'):
+            clk = self.ai_master.ACQ43X_SAMPLE_RATE
         else:
             clk = self.s0.SIG__CLK_S1__FREQ
         return round(float(clk), -3)
@@ -770,11 +773,11 @@ class Carrier:
                 self.s0.SIG__SRC__TRG__0 = trigger_source
 
             if trigger_source == 'EXT' and siggen:
-                logging.info(f'Triggering {siggen}')
+                logging.info(f'Triggering {siggen.addr}')
                 siggen.trigger()
 
             if trigger_source == 'HDMI' and siggen:
-                logging.info(f'Triggering {siggen}')
+                logging.info(f'Triggering {siggen.addr}')
                 siggen.trigger()
 
             if trigger_source == 'WRTT0':
@@ -1088,7 +1091,10 @@ class Carrier:
         if not self.is_awg_idle:
             logging.error("AWG in use unable to load waveform")
             return False
-        
+
+        if isinstance(waveform, (str, Path)):
+            waveform = np.fromfile(waveform, dtype=np.uint8)
+
         mode = AWG_MODE(mode)
         port = mode.value
         buffer = waveform.tobytes()
