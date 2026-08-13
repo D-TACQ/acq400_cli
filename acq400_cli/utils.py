@@ -197,23 +197,35 @@ class SigGen:
         """Enable of disable output sync"""
         self.send(f"OUTP:SYNC {'ON' if enabled else 'OFF'}")
 
-    def config_free_running(self, freq, voltage, shape='SINE'):
+    def volt_offset_from_range(self, v_min, v_max):
+        """Convert input_range to voltage and offset"""
+        amplitude = (float(v_max) - float(v_min)) / 2
+        offset = (float(v_max) + float(v_min)) / 2
+        return amplitude, offset
+
+    def config_free_running(self, freq, voltage, offset=0, shape='SINE'):
         """Configure free running waveform"""
+        if isinstance(voltage, (tuple, list)):
+            voltage, offset = self.volt_offset_from_range(*voltage)
         self.send('BURS:STAT OFF')
         self.send(f"FREQ {freq}")
         self.send(f"VOLT {voltage}")
+        self.send(f"VOLT:OFFS {offset}")
         self.send(f"FUNC:SHAP {shape}")
         self.send('TRIG:SOUR IMM')
 
-    def config_burst(self, freq, voltage, cycles=1, shape='SINE', period=None, source='BUS'):
+    def config_burst(self, freq, voltage, offset=0, shape='SINE', cycles=1, period=None):
         """Config burst waveform"""
+        if isinstance(voltage, (tuple, list)):
+            voltage, offset = self.volt_offset_from_range(*voltage)
         self.send('BURS:STAT ON')
         self.send(f"FREQ {freq}")
         self.send(f"VOLT {voltage}")
+        self.send(f"VOLT:OFFS {offset}")
         self.send(f"FUNC:SHAP {shape}")
         self.send(f"BURS:NCYC {cycles}")
         if period: self.send(f"BURS:INT:PER {period}")
-        self.send(f"TRIG:SOUR {source}")
+        self.send(f"TRIG:SOUR BUS")
 
     def config_dc(self, voltage, scaler=2):
         """Config DC out"""
