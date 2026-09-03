@@ -170,7 +170,8 @@ class Site:
     @cached_property
     def is_dio(self):
         """True if site is dio else False"""
-        return self.knob_exists('DO32')
+        if self.knob_exists('DO32'): return True
+        return self.get('module_name', None) == 'timbus'
 
     @cached_property
     def features(self):
