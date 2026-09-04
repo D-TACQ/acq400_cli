@@ -6,7 +6,7 @@ argparsing classes
 import argparse
 from pathlib import Path
 from acq400_cli.utils import Triplet, SigGen
-from acq400_cli.constants import SIG_LINE, SENSE, RGM_MODE, GPG_MODE
+from acq400_cli.constants import SIG_LINE, SENSE, RGM_MODE, GPG_MODE, CLK_MODE
 
 class ArgTypes:
     sig_src = list(SIG_LINE.__members__)
@@ -103,6 +103,25 @@ class ArgTypes:
                 trigger = Triplet(parts)
                 trigger.source = None
             return trigger
+        except Exception as e:
+            print(e)
+        raise ValueError
+
+    @staticmethod
+    def clock_triplet(arg):
+        """Clock triplet arg type"""
+        parts = arg.upper().split(',')
+        try:
+            if len(parts) == 1:
+                clock = Triplet([int(CLK_MODE[parts[0]].value >= 0), max(0, CLK_MODE[parts[0]].value), 1])
+                clock.source = parts[0]
+            if len(parts) == 2:
+                clock = Triplet([int(CLK_MODE[parts[0]].value >= 0), max(0, CLK_MODE[parts[0]].value), SENSE[parts[1]].value])
+                clock.source = parts[0]
+            if len(parts) == 3:
+                clock = Triplet(parts)
+                clock.source = None
+            return clock
         except Exception as e:
             print(e)
         raise ValueError
