@@ -11,7 +11,7 @@ DATE_FMT = "%y-%m-%d"
 
 POWER_MW_SCALE = 1.25 * 3.64e-6 * 1000
 
-MAX_ETH_RATE=30
+MAX_ETH_RATE=45
 
 
 class AutoIntEnum(IntEnum):
