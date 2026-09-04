@@ -210,7 +210,14 @@ class CLK_SRC_IDX(AutoIntEnum):
     COMM_B= 3
 
 class CLK_MODE(AutoIntEnum):
-    DIS=    0
-    EN=     1
-    INT=    0
-    EXT=    1
+    INT=    -1
+    EXT=    0
+    MB=     1
+    S1=     2
+    S2=     3
+    S3=     4
+    S4=     5
+    S5=     6
+    S6=     7
+
+
