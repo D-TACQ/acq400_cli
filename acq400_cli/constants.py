@@ -187,3 +187,30 @@ class WAVE_FUNC(AutoIntEnum):
     SQUARE= 2
     DC=     3
 
+class CLK_SRC_LINE(AutoIntEnum):
+    EXT=    0
+    HDMI0=  0
+    GPG0=   0
+    COMM_A= 0
+    INT01M= 0
+    MLCK=   1
+    HDMI1=  1
+    GPG1=   1
+    COMM_B= 1
+
+class CLK_SRC_IDX(AutoIntEnum):
+    EXT=    0
+    HDMI0=  1
+    GPG0=   2
+    COMM_A= 3
+    INT01M= 4
+    MCLK=   0
+    HDMI1=  1
+    GPG1=   2
+    COMM_B= 3
+
+class CLK_MODE(AutoIntEnum):
+    DIS=    0
+    EN=     1
+    INT=    0
+    EXT=    1
