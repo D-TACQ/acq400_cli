@@ -186,6 +186,19 @@ class ArgTypes:
                 indexes.append(ArgTypes.int_with_unit(index))
         return indexes
 
+    class hostname_and_filepaths(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            hostnames = getattr(namespace, "hostnames", None) or []
+            filepaths = getattr(namespace, "filepaths", None) or []
+            for value in values:
+                path = Path(value).expanduser()
+                if path.is_file():
+                    filepaths.append(str(path))
+                else:
+                    hostnames.append(value)
+            namespace.hostnames = hostnames
+            namespace.filepaths = filepaths
+
 class ArgParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('formatter_class', argparse.ArgumentDefaultsHelpFormatter)
