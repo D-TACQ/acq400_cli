@@ -470,6 +470,11 @@ class Carrier:
         if max_seg.isdecimal(): return int(max_seg)
         return ord(max_seg) - ord('A')
 
+    @cached_property
+    def release(self):
+        """Return system release version"""
+        return int(self.s0.software_version.split('-')[1])
+
     # Normal methods
 
     def abort_capture(self):
