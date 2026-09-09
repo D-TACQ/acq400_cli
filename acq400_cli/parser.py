@@ -195,7 +195,7 @@ class ArgTypes:
                 if path.is_file():
                     filepaths.append(str(path))
                 else:
-                    uutnames.append(value)
+                    if value not in uutnames: uutnames.append(value)
             namespace.uutnames = uutnames
             namespace.filepaths = filepaths
             if hasattr(namespace, self.dest):
