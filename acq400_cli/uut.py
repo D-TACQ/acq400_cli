@@ -12,7 +12,7 @@ import urllib.request
 import numpy as np
 from pathlib import Path
 
-from acq400_cli.utils import Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property
+from acq400_cli.utils import Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property, is_task_stop, write_task_status
 from acq400_cli.constants import *
 from acq400_cli.exception import *
 from acq400_cli.sample import TransientSample, StreamSample
@@ -1145,7 +1145,7 @@ class Carrier:
             sock.send(segment.upper().encode())
 
     def abort_awg(self, timeout=5):
-        """Request AWG abort and wait for AWG IDLE"""
+        """Abort AWG if not IDLE and wait"""
         if not self.ao_master: return
         self.ao_master.AWG__MODE__ABO = 1
         t0 = time.time()
@@ -1157,27 +1157,36 @@ class Carrier:
         return True
 
     def stream_to_awg(self, waveforms):
-        """Stream waveforms to awg"""
+        """Stream waveform waveforms to AWG"""
+        if not isinstance(waveforms, list): waveforms = [waveforms]
+        buffers = []
+        for waveform in waveforms:
+            if isinstance(waveform, (str, Path)): buffers.append(Path(waveform).read_bytes())
+            else: buffers.append(bytes(waveform))
 
-        self.stream_awg_flag = True
-        if isinstance(waveforms, np.ndarray):
-            waveforms = [waveforms]
+        if not buffers:
+            logging.error(f"{self.hostname} AWG stream: no waveforms")
+            return
 
-        buffers = [waveform.tobytes() for waveform in waveforms]
+        if not self.is_awg_idle:
+            logging.error(f"{self.hostname} AWG stream not IDLE")
+            return
 
-        logging.info(f"{self.hostname} AWG stream start")
         index = 0
-
+        total_bytes = 0
+        
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8 * 1024 * 1024)
             sock.connect((self.addr, PORTS.AWG_STREAM))
             try:
-                while self.stream_awg_flag:
+                while not is_task_stop():
                     sock.sendall(buffers[index])
+                    total_bytes += len(buffers[index])
+                    write_task_status({'total_bytes': total_bytes})
                     index = (index + 1) % len(buffers)
-            except KeyboardInterrupt:
-                pass
+
+            except (KeyboardInterrupt, OSError): pass
 
         logging.info(f"{self.hostname} AWG stream finish")
 
