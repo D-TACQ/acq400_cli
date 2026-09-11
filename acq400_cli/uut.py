@@ -499,7 +499,8 @@ class Carrier:
         self.wait_for_state(CAPTURE_STATE.IDLE, timeout)
 
     def wait_for_arm(self, timeout=None):
-        """Blocks until UUT reaches ARM"""
+        """Blocks until UUT capture reaches ARM"""
+        if not self.ai_master: return
         t0 = time.time()
 
         while True:
