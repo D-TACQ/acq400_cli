@@ -830,10 +830,6 @@ class Carrier:
 
         auto_soft_trigger = 1 if getattr(trigger, 'source', None) == 'AUTO' else 0
 
-        self.s0.TRANSIENT__PRE = pre
-        self.s0.TRANSIENT__POST = post
-        self.s0.TRANSIENT__SOFT_TRIGGER = auto_soft_trigger
-
         self.s0.transient = f"PRE={int(pre)} POST={int(post)} SOFT_TRIGGER={auto_soft_trigger} DEMUX={demux}"
 
         self.ai_master.trg = trigger
@@ -852,8 +848,8 @@ class Carrier:
         
         self.set_stream_mask(stream_mask)
         
-        # Slave UUTs cannot soft trigger
-        if not self.is_master and trigger != '0,0,0':
+        # Slave UUTs cannot soft trigger without rtm
+        if not self.is_master and trigger != '0,0,0' and rgm != '0,0,0':
             if not isinstance(trigger, Triplet): trigger = Triplet(trigger)
             self.ai_master.trg = trigger.override('line', 0)
 
