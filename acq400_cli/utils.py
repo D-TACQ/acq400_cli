@@ -274,6 +274,16 @@ class SigGen:
         self.send("SOUR:FUNC DC")
         self.send(f"SOUR:VOLT:LEV:IMM:OFFS {voltage}")
 
+
+class Ansi:
+
+    CLEAR = '\033[K'
+
+    @staticmethod
+    def move_up(nlines=1):
+        if nlines < 1: return
+        print(f'\033[{nlines}A', end='')
+
 def is_task_stop():
     """return True if in a thread and thread stop else False"""
     stop = getattr(threading.current_thread(), 'stop_event', None)
