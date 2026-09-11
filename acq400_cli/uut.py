@@ -90,6 +90,7 @@ class Carrier:
                         self.site_aliases['ai_sites'][site.value] = new_site
                         if not self.ai_master and new_site.is_master:
                             self.site_aliases['ai_master'] = new_site
+                            self.current_shot = int(new_site.SHOT)
                             logging.debug(f"{self.addr}.{site} is ai master")
 
                     if new_site.is_ao:
