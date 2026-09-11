@@ -74,13 +74,16 @@ class cached_property:
 
 
 class RThread(threading.Thread):
-    """Thread with return"""
+    """Thread with return and stop"""
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('daemon', True)
         super().__init__(*args, **kwargs)
         self.value = None
         self.exception = None
+        self.stop_event = threading.Event()
+        self.status = {}
+        self.last_status = 0
     
     def run(self):
         try: self.value = self._target(*self._args, **self._kwargs)
@@ -88,75 +91,113 @@ class RThread(threading.Thread):
             self.exception = e
             logging.debug(f"{self.name} {e}")
 
-    
     def join(self, *args, **kwargs):
         super().join(*args, **kwargs)
         if self.exception: raise self.exception
         return self.value
 
+    def stop(self):
+        self.stop_event.set()
+
+class BackgroundTask:
+    """Non blocking proxy UUT thread handler"""
+
+    def __init__(self, threads):
+        self.threads = threads
+
+    @property
+    def finished(self):
+        return all(not t.is_alive() for t in self.threads.values())
+
+    def join(self, *args, **kwargs):
+        return {name: t.join(*args, **kwargs) for name, t in self.threads.items()}
+
+    def stop(self):
+        for th in self.threads.values():
+            th.stop()
+
+    def print_status(self):
+        parts = []
+        for uutname, thread in self.threads.items():
+            for key, value in getattr(thread, 'status', {}).items():
+                parts.append(f"{uutname} {key} {value}")
+        line = '  '.join(parts)
+        pad = getattr(self, '_status_width', 0)
+        print('\r' + line.ljust(pad), end='', flush=True)
+        self._status_width = max(pad, len(line))
+
 class FanoutProxy(dict):
     """Proxy UUT attributes and methods"""
 
-    def __init__(self, uuts, blocking=True, pending=None):
+    def __init__(self, uuts, blocking=True):
         super().__init__(uuts)
         object.__setattr__(self, '_blocking', blocking)
-        object.__setattr__(self, '_pending', [] if pending is None else pending)
-    
-    def __getattr__(self, name):
-        threads = []
+        object.__setattr__(self, '_bg', False)
+        object.__setattr__(self, '_parent', None)
+        object.__setattr__(self, '_attr', None)
+
+    @property
+    def bg(self):
+        """Reuse this proxy for the next getattr/call without blocking."""
+        object.__setattr__(self, '_bg', True)
+        return self
+
+    def _fanout_blocking(self):
+        if self._bg:
+            object.__setattr__(self, '_bg', False)
+            return False
+        return self._blocking
+
+    def _fanout(self, fn, *args, blocking=None):
+        if blocking is None:
+            blocking = self._fanout_blocking()
+        threads = {}
         for key, target in self.items():
-            thread = RThread(target=getattr, args=(target, name))
+            thread = RThread(target=fn, args=(target, *args))
             thread._fanout_key = key
             thread.start()
-            threads.append(thread)
-        results = {thread._fanout_key: thread.join() for thread in threads}
-        return self.__class__(results, self._blocking, self._pending)
+            threads[key] = thread
+        if not blocking:
+            return BackgroundTask(threads)
+        return {key: thread.join() for key, thread in threads.items()}
+
+    def __getattr__(self, name):
+        blocking = self._fanout_blocking()
+        results = self._fanout(getattr, name, blocking=True)
+        proxy = self.__class__(results, blocking)
+        object.__setattr__(proxy, '_parent', dict(self))
+        object.__setattr__(proxy, '_attr', name)
+        return proxy
 
     def __setattr__(self, name, value):
         if name.startswith('_'):
             object.__setattr__(self, name, value)
             return
-
-        threads = []
-        for key, target in self.items():
-            thread = RThread(target=setattr, args=(target, name, value))
-            thread._fanout_key = key
-            thread.start()
-            threads.append(thread)
-        
-        if not self._blocking:
-            self._pending.extend(threads)
-            return
-
-        for thread in threads:
-            thread.join()
+        result = self._fanout(setattr, name, value)
+        if isinstance(result, BackgroundTask):
+            return result
 
     def __call__(self, *args, **kwargs):
-        threads = []
-
-        for key, fn in self.items():
-            thread = RThread(target=fn, args=args, kwargs=kwargs)
-            thread._fanout_key = key
-            thread.start()
-            threads.append(thread)
-
-        if not self._blocking:
-            self._pending.extend(threads)
+        sample = next(iter(self.values()), None)
+        if not callable(sample):
+            if self._parent is None or self._attr is None:
+                raise TypeError(f'{sample!r} is not callable')
+            threads = {}
+            for key, target in self._parent.items():
+                thread = RThread(target=setattr, args=(target, self._attr, args[0]))
+                thread._fanout_key = key
+                thread.start()
+                threads[key] = thread
+            if not self._fanout_blocking():
+                return BackgroundTask(threads)
+            for thread in threads.values():
+                thread.join()
             return
 
-        results = {thread._fanout_key: thread.join() for thread in threads}
-        return self.__class__(results, self._blocking, self._pending)
-
-    def wait_for_complete(self):
-        """Wait for threads to complete then enable blocking"""
-        results = {thread._fanout_key: thread.join() for thread in self._pending}
-        self._pending.clear()
-        self._blocking = True
-        return self.__class__(results, self._blocking, self._pending)
-
-    def disable_blocking(self):
-        """disable blocking"""
-        self._blocking = False
+        result = self._fanout(lambda fn: fn(*args, **kwargs))
+        if isinstance(result, BackgroundTask):
+            return result
+        return self.__class__(result, self._blocking)
 
 class StopWatch(list):
     """easy delta time between marks"""
@@ -232,6 +273,21 @@ class SigGen:
         voltage /= scaler
         self.send("SOUR:FUNC DC")
         self.send(f"SOUR:VOLT:LEV:IMM:OFFS {voltage}")
+
+def is_task_stop():
+    """return True if in a thread and thread stop else False"""
+    stop = getattr(threading.current_thread(), 'stop_event', None)
+    if not stop: return True
+    return stop.is_set()
+
+def write_task_status(status, limit=1):
+    """write status to thread if status available"""
+    thread = threading.current_thread()
+    if not hasattr(thread, 'status'): return
+    now = time.time()
+    if now - thread.last_status < limit: return
+    thread.last_status = now
+    thread.status = status
 
 def chans_to_bitmask(chans):
     """Converts list of chans to a hex bitmask"""
