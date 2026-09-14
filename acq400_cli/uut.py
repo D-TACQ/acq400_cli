@@ -1149,16 +1149,26 @@ class Carrier:
             sock.connect((self.addr, PORTS.AWG_SEGMENT_SELECT))
             sock.send(segment.upper().encode())
 
-    def abort_awg(self, timeout=5):
+    def wait_for_awg_idle(self, timeout=None):
+        """Blocks until UUT AWG reaches IDLE or timeout"""
+        if not self.ao_master: return
+        logging.debug(f"{self.addr} wait for AWG IDLE")
+        t0 = time.time()
+        while True:
+            if self.is_awg_idle: break
+            t1 = time.time() - t0
+            if timeout and t1 > timeout: 
+                raise TimeoutError(f'{self.addr} AWG failed to reach IDLE after {timeout}s')
+            time.sleep(1)
+        logging.debug(f"{self.addr} AWG IDLE")
+
+    def abort_awg(self, timeout=None):
         """Abort AWG if not IDLE and wait"""
         if not self.ao_master: return
-        t0 = time.time()
-        while not self.is_awg_idle:
+        if not self.is_awg_idle:
+            logging.debug(f"{self.addr} aborting AWG")
             self.ao_master.AWG__MODE__ABO = 1
-            time.sleep(2)
-            if time.time() - t0 > timeout:
-                raise TimeoutError(f'{self.addr} AWG failed to reach IDLE after {timeout}s')
-        return
+            self.wait_for_awg_idle(timeout)
 
     def stream_to_awg(self, waveforms):
         """Stream waveform waveforms to AWG"""
