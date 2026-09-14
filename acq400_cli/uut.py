@@ -12,7 +12,7 @@ import urllib.request
 import numpy as np
 from pathlib import Path
 
-from acq400_cli.utils import Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property, is_task_stop, write_task_status
+from acq400_cli.utils import BackgroundTask, Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property, is_task_stop, write_task_status
 from acq400_cli.constants import *
 from acq400_cli.exception import *
 from acq400_cli.sample import TransientSample, StreamSample
@@ -125,6 +125,11 @@ class Carrier:
         
         for thread in threads:
             thread.join()
+
+    @property
+    def bg(self):
+        """Return the method in the background"""
+        return BackgroundTask.wrap(self)
 
 
     # Attribute methods
