@@ -1147,14 +1147,13 @@ class Carrier:
     def abort_awg(self, timeout=5):
         """Abort AWG if not IDLE and wait"""
         if not self.ao_master: return
-        self.ao_master.AWG__MODE__ABO = 1
         t0 = time.time()
         while not self.is_awg_idle:
-            time.sleep(1)
+            self.ao_master.AWG__MODE__ABO = 1
+            time.sleep(2)
             if time.time() - t0 > timeout:
-                logging.warning(f"AWG failed to abort after {timeout}s")
-                return False
-        return True
+                raise TimeoutError(f'{self.addr} AWG failed to reach IDLE after {timeout}s')
+        return
 
     def stream_to_awg(self, waveforms):
         """Stream waveform waveforms to AWG"""
