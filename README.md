@@ -12,7 +12,7 @@ pip3 install -e .
 
 ## Usage
 
-### Transient
+### Transient Capture
 
 Capture transient data and save it to the host.
 
@@ -32,7 +32,7 @@ acq400_cli transient_capture --post=100K --trigger=SOFT,RISING --rgm=RTM,RISING 
 ```
 
 
-### Continuous
+### Continuous Stream
 
 Stream data continuously to the host.
 
@@ -80,6 +80,11 @@ acq400_cli configure_sites --ident <uutnames>
 - **Spad microsecond** - Add microsecond to spad[1]:
 ```bash
 acq400_cli configure_sites --us <uutnames>
+```
+
+- **Disable event signature** - Disable es in data:
+```bash
+acq400_cli configure_sites --no_es <uutnames>
 ```
 
 ### Configure Clocking
@@ -215,7 +220,7 @@ acq400_cli plot_datafile --pcfg=<pcfg2 file> <datafiles>
 
 ### Generate Hexdump
 
-Generate hexdump command
+Generate hexdump command for current UUT data format
 
 - **Stream** - Generate command for stream data
 ```bash
@@ -235,6 +240,36 @@ Demux datafiles into individual channels
 acq400_cli demux_data <datafiles>
 ```
 
+### Stream AWG
+
+Stream waveform files to AO modules continuously until Ctrl+C.
+
+- **Continuous** - stream a waveform file until Ctrl+C:
+```bash
+acq400_cli stream_to_awg <uutnames> sine.dat
+```
+
+- **Multiple files** - cycle through waveform files:
+```bash
+acq400_cli stream_to_awg <uutnames> wf1.dat wf2.dat --trigger=EXT,RISING
+```
+
+- **Burst** - stream bursts on each external event:
+```bash
+acq400_cli stream_to_awg <uutnames> sine.dat --rgm=RTM,RISING --burstlen=5000 --trigger=AUTO
+```
+
+| Arg | Default | Description |
+|-----|---------|-------------|
+| **uutnames** | — | UUT hostnames |
+| **filepaths** | — | Waveform files |
+| **--trigger**, **--trg** | `EXT,RISING` | AWG trigger (`SOURCE,SENSE`) |
+| **--rgm** | `0,0,0` | RGM trigger |
+| **--burstlen** | `0` | Burst length |
+| **--clock**, **--clk** | — | AWG clock |
+| **--clock_div**, **--clkdiv** | — | AWG clock divider|
+
+Note: Stop with Ctrl+C.
 
 ## Definitions
 
@@ -259,7 +294,7 @@ Capture commands `--trigger`, `--event0`, `--event1`
 | **INT** | Software soft trigger |
 | **SOFT** | Software soft trigger |
 | **WRTT1** | White Rabbit trigger (line 0) |
-| **AUTO** | Auto soft trigger. Only enables trigger when UUTs are armed |
+| **AUTO** | Auto soft trigger. |
 
 #### Sense:
 
@@ -354,7 +389,7 @@ chan=0;wavelength=3125;shape=SINE
 ### Test Configuration File (.tcfg)
 ##TODO
 
-### Datafile formats (.data, .chan)
+### Datafile formats (.dat)
 
 Datafile format is encoded in the filename as dot-separated parts:
 
