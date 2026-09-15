@@ -752,7 +752,8 @@ class Carrier:
         if source == 'INT': self.s0.SIG__SRC__TRG__1 = "STRIG"
         if source == 'SOFT': self.s0.SIG__SRC__TRG__1 = "STRIG"
         if source == 'WRTT1': self.s0.SIG__SRC__TRG__1 = "WRTT1"
-        if source == 'AUTO': self.s0.SIG__SRC__TRG__1 = "NONE"
+        #if source == 'AUTO': self.s0.SIG__SRC__TRG__1 = "NONE"
+        if source == 'AUTO': self.s0.SIG__SRC__TRG__1 = "STRIG"
 
         if not validate: return
 
@@ -764,11 +765,6 @@ class Carrier:
         if source == 'HDMI' and self.get_counter_freq() > 0:
             logging.warning(f"Free Running Trigger Detected - Changing {source} -> FREE")
             self.s0.SIG__SRC__TRG__0 = "nc" # nc is a placeholder for HDMI
-
-        # Auto soft triggers need to be disabled until UUT is armed
-        if source in ('SOFT', 'INT') and self.auto_soft_enabled:
-            logging.warning(f"Auto Soft Trigger - Changing trigger to AUTO")
-            self.s0.SIG__SRC__TRG__1 = "NONE"
 
     def trigger_line(self, siggen=None, line=0):
         """Trigger capture based on UUT signal config"""
