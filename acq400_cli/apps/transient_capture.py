@@ -4,7 +4,6 @@
 Capture transient data on UUTs
 """
 
-import os
 from acq400_cli import ArgTypes, Collection, ArgParser, generate_timestamp
 
 def main(args):
@@ -22,7 +21,7 @@ def main(args):
         translen=args.translen,
     )
 
-    uuts.print_status()
+    status_task = uuts.bg.print_capture_status()
 
     uuts.arm_transient()
     print('Arming')
@@ -42,6 +41,8 @@ def main(args):
 
     print('Reading data')
     data = uuts.read_transient_data()
+
+    for task in status_task.values(): task.stop()
 
     timestamp = generate_timestamp() if args.timestamp else None
 
