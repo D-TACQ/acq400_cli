@@ -240,6 +240,41 @@ Demux datafiles into individual channels
 acq400_cli demux_data <datafiles>
 ```
 
+### Upload Waveform
+
+Upload waveform files to AO modules (oneshot, rearm, or continuous).
+
+- **Oneshot** - load and play once:
+```bash
+acq400_cli upload_waveform <uutnames> sine.dat
+```
+
+- **Continuous** - load and play continuously:
+```bash
+acq400_cli upload_waveform <uutnames> sine.dat --mode=CONTINUOUS
+```
+
+- **Multiple files** - upload waveforms in sequence:
+```bash
+acq400_cli upload_waveform <uutnames> wf1.dat wf2.dat --trigger=EXT,RISING
+```
+
+- **Burst** - play bursts on each external event:
+```bash
+acq400_cli upload_waveform <uutnames> sine.dat --rgm=RTM,RISING --burstlen=5000 --trigger=AUTO
+```
+
+| Arg | Default | Description |
+|-----|---------|-------------|
+| **uutnames** | — | UUT hostnames |
+| **filepaths** | — | Waveform files |
+| **--mode** | `ONCE` | AWG mode (`ONCE`, `REARM`, `CONTINUOUS`) |
+| **--trigger**, **--trg** | `EXT,RISING` | AWG trigger (`SOURCE,SENSE`) |
+| **--rgm** | `0,0,0` | RGM trigger |
+| **--burstlen** | `0` | Burst length |
+| **--clock**, **--clk** | — | AWG clock |
+| **--clock_div**, **--clkdiv** | — | AWG clock divider |
+
 ### Stream AWG
 
 Stream waveform files to AO modules continuously until Ctrl+C.
