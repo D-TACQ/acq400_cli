@@ -8,9 +8,8 @@ from acq400_cli import ArgTypes, Collection, ArgParser, Ansi
 import time
 
 def main(args):
-    print(args)
     uuts = Collection(args.uutnames)
-    uuts.abort_awg()
+    uuts.abort_awg(timeout=10)
 
     print(f"Configuring {uuts.names}")
     uuts.configure_awg(
