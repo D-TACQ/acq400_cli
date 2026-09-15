@@ -1094,8 +1094,21 @@ class Carrier:
             fp.write('\n'.join(txt) + '\n')
         return txt
 
+    def valid_awg_waveform(self, nbytes):
+        """True if waveform is same mode as previous else False"""
+        bufferlen = int(self.s0.bufferlen)
+        length = int(str(self.ao_master.playloop_length).split()[0])
+        if length == 0: return True
+
+        bytes_per_sample = int(self.ao_master.nchan) * int(self.ao_master.data_size)
+        samples_per_buffer = bufferlen // bytes_per_sample
+        system_is_long = length > 2 * samples_per_buffer
+        new_is_long = nbytes > bufferlen
+        return system_is_long == new_is_long
+
     def load_awg(self, waveform, mode='ONCE', repeat=0):
         """Load waveform into AWG"""
+        if not self.ao_master: return False
 
         if not self.is_awg_idle:
             logging.error("AWG in use unable to load waveform")
@@ -1106,11 +1119,22 @@ class Carrier:
 
         mode = AWG_MODE(mode)
         port = mode.value
-        buffer = waveform.tobytes()
+        waveform = waveform.tobytes()
+        length = len(waveform)
+        bufferlen = int(self.s0.bufferlen)
 
-        logging.info(f"Sending {len(buffer)} Bytes to {self.addr}:{port} ({mode.name})")
+        if mode == AWG_MODE.CONTINUOUS and length and length < 4 * bufferlen:
+            repeat = (4 * bufferlen) // length - 1
+            if (4 * bufferlen) % length:
+                logging.warning(f"{self.hostname} waveform is not sized correctly for seamless playing")
 
-        self.upload_to_port(port, buffer, repeat)
+
+        if not self.valid_awg_waveform(length * (1 + repeat)):
+            raise ValueError(f"{self.hostname} AWG waveform size {length} incompatible")
+
+        logging.info(f"Sending {length} Bytes to {self.addr}:{port} ({mode.name})")
+
+        self.upload_to_port(port, waveform, repeat)
 
     def load_awg_seg(self, waveform, segment, mode='REARM', repeat=0):
         """Load waveform into AWG segment"""
