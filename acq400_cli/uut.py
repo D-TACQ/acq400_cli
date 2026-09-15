@@ -1247,6 +1247,15 @@ class Carrier:
                 print(f"{self.addr}:{port}> {rx.decode('latin-1').strip()}")
                 if rx.startswith(b"DONE"): break
 
+    def print_capture_status(self):
+        """Print UUT capture status on change until stopped"""
+        prev_state = None
+        while not is_task_stop():
+            state = self.capture_state.name
+            if state != prev_state:
+                print(f"> {self.hostname} {COLORS.format(COLORS.get(state), state)}")
+                prev_state = state
+            time.sleep(0.5)
    
 
 class Collection(list):
