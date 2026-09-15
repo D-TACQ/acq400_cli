@@ -1253,6 +1253,7 @@ class Collection(list):
     """A class representing multiple UUTs"""
 
     def __init__(self, uutnames):
+        if not uutnames: raise ValueError("No uutnames")
         self.uuts = {uutname: Carrier(uutname) for uutname in uutnames}
         self.extend(self.uuts[name] for name in sorted(self.uuts))
         self._proxy = FanoutProxy(self.uuts)
