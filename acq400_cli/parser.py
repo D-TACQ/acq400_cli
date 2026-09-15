@@ -198,6 +198,8 @@ class ArgTypes:
                     if value not in uutnames: uutnames.append(value)
             namespace.uutnames = uutnames
             namespace.filepaths = filepaths
+            if not filepaths: raise ValueError("Need at least one filepath")
+            if not uutnames: raise ValueError("Need at least one uutname")
             if hasattr(namespace, self.dest):
                 delattr(namespace, self.dest)
 
