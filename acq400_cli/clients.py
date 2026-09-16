@@ -148,29 +148,21 @@ class StatusMontior:
         self.sock = None
         self.online = True
 
-        self._status = {
-            'state': None,
-            'pre': 0,
-            'post': 0,
-            'elapsed': 0,
-            'extra': 0,
-            'shot': 0,
-            'complete': False,
-        }
+        self.state = None
+        self.pre = 0
+        self.post = 0
+        self.elapsed = 0
+        self.extra = 0
+        self.shot = 0
+        self.complete = False
 
         atexit.register(self.close)
         threading.Thread(target=self.__monitor, daemon=True).start()
 
-    def __getattr__(self, key):
-        if key in self._status:
-            with self.lock:
-                return self._status[key]
-        return super().__getattr__(key)
-
     def is_complete(self):
         with self.lock:
-            if self._status['complete']:
-                self._status['complete'] = False
+            if self.complete:
+                self.complete = False
                 return True
             return False
 
@@ -203,28 +195,28 @@ class StatusMontior:
         prev_state = '0'
 
         while True:
-            self.connect()
             try:
-                while True:
+                self.connect()
+                while self.sock:
                     line = self.sock.recv(200).strip()
 
                     if not line: continue
                     if not line.startswith(b'STX'): continue
-                    
+
                     now = time.time()
                     if last == line[:5] and now - last_update < rate: continue
                     state, pre, post, elapsed, extra= line.decode().split('\n')[0].split(' ')[1:]
                     with self.lock:
                         if prev_state != '0' and state == '0':
-                            self._status['shot'] += 1
-                            self._status['complete'] = True
-                        elif state == '0': self._status['complete'] = False
+                            self.shot += 1
+                            self.complete = True
+                        elif state == '0': self.complete = False
 
-                        self._status['state'] = state
-                        self._status['pre'] = pre
-                        self._status['post'] = post
-                        self._status['elapsed'] = elapsed
-                        self._status['extra'] = extra
+                        self.state = state
+                        self.pre = pre
+                        self.post = post
+                        self.elapsed = elapsed
+                        self.extra = extra
 
                     prev_state = state
                     last = line[:5]
@@ -232,4 +224,5 @@ class StatusMontior:
             except Exception as exc:
                 logging.warning(f"{self.addr} monitor recv error: {exc}")
                 self.online = False
+                self.close()
                 time.sleep(1)
