@@ -48,10 +48,11 @@ class Carrier:
     def __str__(self):
         spec = []
         spec.append(f" ----- {self.addr} -----")
-        spec.append(f" Capture: {self.capture_state.name}")
+        state = self.capture_state.name
+        spec.append(f" Capture State: {COLORS.format(COLORS.get(state), state)}")
         spec.append(f" Sync Role: {self.s0.sync_role}")
         spec.append(f" Sites:")
-        for site in self.site_indexes:
+        for site in sorted(self.site_indexes):
             spec.append(f" {site}\t{self.site_indexes[site]}")
         return '\n'.join(spec)
     
