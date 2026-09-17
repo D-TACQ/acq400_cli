@@ -283,14 +283,21 @@ class Carrier:
    
     @property
     def sample_rate(self):
-        """sample rate"""
+        """return the sample rate"""
         if self.ai_master.model.upper().startswith('ACQ48'):
             clk = self.ai_master.ACQ480__OSR
+            return round(float(clk), -3)
         elif self.ai_master.model.upper().startswith('ACQ43'):
             clk = self.ai_master.ACQ43X_SAMPLE_RATE
+            return round(float(clk), -3)
         else:
-            clk = self.s0.SIG__CLK_S1__FREQ
-        return round(float(clk), -3)
+            if self.ai_master: set_clk = int(self.s0.SIG__CLK_MB__SET) / int(self.ai_master.CLKDIV)
+            if self.ao_master: set_clk = int(self.s0.SIG__CLK_MB__SET) / int(self.ao_master.CLKDIV)
+            live_clk = float(self.s0.SIG__CLK_S1__FREQ)
+            if abs(live_clk - set_clk) > 0.01 * abs(set_clk):
+                logging.warning(f"{self.hostname} Using Live clock")
+                return round(float(live_clk), -3)
+            return set_clk
 
     @cached_property
     def calibration(self):
