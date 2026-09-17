@@ -7,11 +7,13 @@ Usage:
     acq400_cli stream_to_host --stream_mask=1-4,33 --filesamples=1000000 --overwrite --hexdump acq2106_054
 """
 
-from acq400_cli import ArgTypes, Collection, StreamClient, ArgParser
+from acq400_cli import ArgTypes, Collection, ArgParser, generate_timestamp, PORTS
+from acq400_cli.data import StreamDataFile
+import logging
+import time
 
 def main(args):
     uuts = Collection(args.uutnames)
-
     uuts.abort_capture()
 
     print(f"Configuring {uuts.names}")
@@ -22,34 +24,64 @@ def main(args):
         stream_mask=args.stream_mask
     )
 
-    print(f"Init Stream {uuts.names}")
-    stream = StreamClient(
-        uuts,
-        savedir=args.savedir,
-        filebytes=args.filebytes,
-        filesamples=args.filesamples,
-        timestamp=args.timestamp,
-        hexdump=args.hexdump,
-        save=True,
-    )
+    timestamp = generate_timestamp() if args.timestamp else None
+    stream_tasks = {}
 
     print(f"Start stream {uuts.names}")
-    stream.start(
-        seconds=args.seconds,
-        samples=args.samples,
-        bytes=args.bytes
-    )
+    for uut in uuts:
+        if not uut.stream_enabled:
+            logging.error(f"Streaming not enabled on {uut.hostname}")
+            continue
+
+        sample_format = uut.stream_sample_format
+        filebytes = args.filebytes
+        if args.filesamples: filebytes = sample_format.bytes * args.filesamples
+        if filebytes: logging.info(f"{uut.addr} File {filebytes} Bytes")
+
+        if args.samples:
+            target_bytes = sample_format.bytes * args.samples
+        elif args.bytes:
+            target_bytes = args.bytes
+        else:
+            target_bytes = int(args.seconds * sample_format.bytes * uut.sample_rate)
+
+        datafile = None
+        if args.save:
+            datafile = StreamDataFile(
+                args.savedir,
+                filesize=filebytes,
+                sample_size=sample_format.bytes,
+                hostname=uut.hostname,
+                format=sample_format.tag,
+                timestamp=timestamp
+            )
+            uut.save_metadata(datafile.name.with_suffix('.meta'))
+
+        stream_tasks[uut.hostname] = uut.bg.stream_to_host(target_bytes, PORTS.STREAM, sample_format, datafile)
+
+    if not stream_tasks: return
+    
+    for uutname, task in stream_tasks.items(): uuts[uutname].print_stream_status(task.thread.status)
 
     uuts.wait_for_arm()
     print('Armed')
 
-    stream.print_status()
-
     uuts.trigger_line(siggen=args.siggen, line=args.trigger.line)
 
-    uuts.wait_for_idle()
+    try:
+        while not all(task.finished for task in stream_tasks.values()):
+            for uutname, task in stream_tasks.items():
+                uuts[uutname].print_stream_status(task.thread.status)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Interrupt")
+        for task in stream_tasks.values():
+            task.stop()
 
-    [thread.join() for thread in stream.streams.values()]
+    for uutname, task in stream_tasks.items():
+        savepath = task.join()
+        if args.hexdump and savepath:
+            print(f"{uuts[uutname].stream_sample_format.hexdump} {savepath}")
 
 
 def get_parser():
@@ -68,9 +100,10 @@ def get_parser():
     parser.add_argument('--filesamples', default=None, type=ArgTypes.int_with_unit, help='Max filesize in samples')
 
     parser.add_argument('--savedir', default="DATA", help='Save dir')
+    parser.add_argument('--save', default=True, action='store_true', help='Save stream to file')
     parser.add_argument('--timestamp', action='store_true', help='Timestamp datafiles')
 
-    parser.add_argument('--siggen', default=None, type=ArgTypes.siggen, help='Siggen hostname to EXT trigger')
+    parser.add_argument('--siggen', default=None, type=ArgTypes.siggen, help='Siggen hostname to external trigger')
     parser.add_argument('--hexdump', action='store_true', help='Print hexdump command')
     
     parser.add_argument('uutnames', nargs='+', help="uut hostnames")

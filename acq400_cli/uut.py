@@ -12,7 +12,7 @@ import urllib.request
 import numpy as np
 from pathlib import Path
 
-from acq400_cli.utils import BackgroundTask, Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property, is_task_stop, write_task_status
+from acq400_cli.utils import Ansi, BackgroundTask, Triplet, background_task, chans_to_bitmask, bitmask_to_chans, FanoutProxy, DotDict, RThread, StopWatch, cached_property, is_task_stop, write_task_status
 from acq400_cli.constants import *
 from acq400_cli.exception import *
 from acq400_cli.sample import TransientSample, StreamSample
@@ -624,7 +624,6 @@ class Carrier:
         savepath = getattr(datafile, 'name', None)
         logging.debug(f"Streaming to host {target_bytes} Bytes")
 
-
         target_bytes = int((target_bytes // sample_format.bytes) * sample_format.bytes)
         nsamples = int(bufferlen // sample_format.bytes)
         bufferlen = int(nsamples * sample_format.bytes)
@@ -636,62 +635,64 @@ class Carrier:
         spads = sample_format.types.get('SPD', [])
         spad0_chan = spads[0] if spads else None
 
-        self.status = DotDict({
-            'state': 'streaming',
-            'total_bytes': 0,
-            'time_start': 0,
-            'missed': 0,
-            'spad0_chan': spad0_chan,
-            'savepath': savepath,
-            'target_bytes': target_bytes,
-            'stop_flag': False,
-            'ssb': sample_format.bytes,
-        })
+        total_bytes = 0
+        missed = 0
+        time_start = 0
 
+        def write_stream_state():
+            write_task_status({
+                'total_bytes': total_bytes,
+                'target_bytes': target_bytes,
+                'ssb': sample_format.bytes,
+                'missed': int(missed),
+                'time_start': time_start,
+                'spad0_chan': spad0_chan,
+                'savepath': savepath,
+            })
+
+        write_stream_state()
         logging.info(f"{self.hostname} Init stream {target_bytes >> 20} MiB ({self.data_rate_masked}MB/s)")
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, max(bufferlen, 8 * 1024 * 1024))
             sock.connect((self.addr, port))
+            sock.settimeout(1)
 
             cursor = 0
             spad0_last = np._NoValue
 
             try:
-                while True:
-                    nbytes = sock.recv_into(view[cursor:])
+                while not is_task_stop():
+                    try:
+                        nbytes = sock.recv_into(view[cursor:])
+                    except socket.timeout: continue
                     if nbytes == 0: break
 
                     cursor += nbytes
-                    self.status.total_bytes += nbytes
-
-                    if self.status.time_start == 0: 
-                        sock.settimeout(30)
-                        self.status.time_start = time.time()
+                    total_bytes += nbytes
+                    if time_start == 0: time_start = time.time()
+                    write_stream_state()
 
                     if cursor >= bufferlen:
-
-                        if datafile: 
-                            trim = max(0, self.status.total_bytes - target_bytes)
+                        if datafile:
+                            trim = max(0, total_bytes - target_bytes)
                             datafile.write(buffer[:cursor - trim])
 
                         if spad0_chan != None:
                             spad0_data = array[str(spad0_chan)]
-                            self.status.missed += np.sum(np.diff(spad0_data, prepend=spad0_last) - 1)
+                            missed += np.sum(np.diff(spad0_data, prepend=spad0_last) - 1)
                             spad0_last = spad0_data[-1]
-                        
+
                         cursor = 0
+                        if total_bytes >= target_bytes: break
 
-                        if self.status.stop_flag: break
-                        if self.status.total_bytes >= target_bytes: break
-
-            except KeyboardInterrupt: pass
+            except (KeyboardInterrupt, OSError): pass
 
         if datafile: datafile.close()
-        
-        logging.info(f"{self.hostname} Finshed {self.status.total_bytes >> 20}MB ({self.status.total_bytes // sample_format.bytes} Samples) streamed to {savepath}")
-        if self.status.missed > 0: logging.warning(f"{self.hostname} Stream {self.status.missed} missing samples")
+
+        logging.info(f"{self.hostname} Finshed {total_bytes >> 20}MB ({total_bytes // sample_format.bytes} Samples) streamed to {savepath}")
+        if missed > 0: logging.warning(f"{self.hostname} Stream {missed} missing samples")
         return savepath
 
     def read_stream_sample(self, nsamples=1):
@@ -958,15 +959,17 @@ class Carrier:
         if savedir: filepath = os.path.join(savedir, filepath)
         return Path(filepath)
 
-    def get_stream_status(self):
-        """return the stream status string"""
-        if not self.status: return None
+    def print_stream_status(self, status):
+        """print stream status line from status dict"""
+        ssb = status.get('ssb') or 1
+        current = status.get('total_bytes', 0) // ssb
+        target = status.get('target_bytes', 0) // ssb
+        time_start = status.get('time_start', 0)
+        runtime = int(time.time() - time_start) if time_start > 0 else 0
+        spad0_chan = status.get('spad0_chan')
+        missed = '' if spad0_chan is None else f"({status.get('missed', 0):,} Missed)"
         state = self.capture_state.name
-        current = self.status.total_bytes // self.status.ssb
-        target = self.status.target_bytes // self.status.ssb
-        runtime = int(time.time() - self.status.time_start) if self.status.time_start > 0 else 0
-        missed = '' if self.status.spad0_chan is None else f"({self.status.missed:,} Missed)"
-        return f"{self.hostname} [{COLORS.format(COLORS.get(state), state)}] {runtime}s {current:,} / {target:,} Samples {missed}"
+        print(f"> {self.hostname} [{COLORS.format(COLORS.get(state), state)}] {runtime}s {current:,} / {target:,} Samples {missed}")
 
     def set_mgt_agg(self, enable=True, decimate=None):
         """Set MGT aggregator"""
