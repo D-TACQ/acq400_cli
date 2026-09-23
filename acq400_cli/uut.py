@@ -1151,34 +1151,37 @@ class Carrier:
         """Load waveform into AWG segment"""
 
         if not self.ao_master: return
-        if not self.is_awg_idle:
-            logging.error("Unable to load waveform; AWG not IDLE")
-            return False
-
         if isinstance(segment, str):
             segment = ord(segment.upper()) - ord('A')
+            
         max_awg_seg = self.max_awg_seg
-
         if segment > max_awg_seg:
-            logging.error(f"Segment {segment} is beyond max seg {max_awg_seg}")
-            return False
+            logging.error(f"{self.addr} Segment {segment} is beyond max seg {max_awg_seg}")
+            return
+
+        if isinstance(waveform, (str, Path)):
+            waveform = np.fromfile(waveform, dtype=np.uint8)
 
         mode = AWG_SEG_MODE(mode)
         port = mode.value + (10 * segment)
         buffer = waveform.tobytes()
         seg_char = chr(ord('A') + segment)
 
-        logging.info(f"Uploading AWG {len(buffer)} Bytes to {self.addr}:{port} (SEG_{seg_char}_{mode.name})")
+        logging.info(f"Uploading AWG {len(buffer)} Bytes to {self.addr}:{port} (SEGMENT_{seg_char}_{mode.name})")
 
         self.upload_to_port(port, buffer, repeat)
 
-    def set_awg_segment(self, segment):
-        """Set next segment"""
-        if not isinstance(segment, str):
-            segment = chr(ord('A') + segment)
+    def feed_awg_segment_pattern(self, pattern):
+        """feed pattern to AWG segment"""
+        buf = pattern.upper().encode()
         with socket.socket() as sock:
             sock.connect((self.addr, PORTS.AWG_SEGMENT_SELECT))
-            sock.send(segment.upper().encode())
+            sock.settimeout(1)
+            try:
+                while not is_task_stop():
+                    try: sock.sendall(buf)
+                    except socket.timeout: continue
+            except (KeyboardInterrupt, OSError): pass
 
     def wait_for_awg_idle(self, timeout=None):
         """Blocks until UUT AWG reaches IDLE or timeout"""
