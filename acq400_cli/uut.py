@@ -833,6 +833,7 @@ class Carrier:
         stream_mask=None,
         sites=None,
         spad=None,
+        validate=True
         ):
         """Configures uut for capture"""
         if not self.ai_master: return
@@ -843,10 +844,10 @@ class Carrier:
         self.s0.transient = f"PRE={int(pre)} POST={int(post)} SOFT_TRIGGER={auto_soft_trigger} DEMUX={demux}"
 
         self.ai_master.trg = trigger
-        if hasattr(trigger, 'source') and trigger.source: self.set_line_source(trigger.source)
+        if hasattr(trigger, 'source') and trigger.source: self.set_line_source(trigger.source, validate)
 
         self.ai_master.event0 = event0
-        if hasattr(event0, 'source') and event0.source: self.set_line_source(event0.source)
+        if hasattr(event0, 'source') and event0.source: self.set_line_source(event0.source, validate)
         
         self.ai_master.event1 = event1
 
