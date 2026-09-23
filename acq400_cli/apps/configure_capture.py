@@ -9,7 +9,7 @@ from acq400_cli import ArgTypes, Collection, ArgParser
 def main(args):
     uuts = Collection(args.uutnames)
 
-    uuts.wait_for_idle()
+    uuts.wait_for_idle(timeout=10)
 
     uuts.configure_capture(
         pre=args.pre,
@@ -23,9 +23,12 @@ def main(args):
         stream_mask=args.stream_mask,
         sites=args.sites,
         spad=args.spad,
+        validate=False,
     )
 
-    if args.trigger_source: uuts.set_line_source(args.trigger_source, validate=False)
+    uuts.ident_spad(args.ident)
+    uuts.set_spad1_count(args.us)
+    uuts.set_event_signaure(args.no_es)
 
     print(f"Capture Configured {uuts.names}")
 
@@ -40,10 +43,16 @@ def get_parser():
     parser.add_argument('--event1', '--evt1', default='0,0,0', type=ArgTypes.signal_triplet, help='Capture Event1')
     parser.add_argument('--rgm', default='0,0,0', type=ArgTypes.rgm_triplet, help='RGM triplet')
     parser.add_argument('--translen', '--rtm_translen', default=0, type=int, help='Translen value')
+
     parser.add_argument('--demux', action='store_true', help='Demux data')
     parser.add_argument('--stream_mask', '--mask', default=None, type=ArgTypes.list_of_channels, help='Stream mask channels')
+
     parser.add_argument('--spad', default=None, type=ArgTypes.spad, help='Spad length')
     parser.add_argument('--sites', default=None, help='run0 sites (1,2,3 or ALL)')
+
+    parser.add_argument('--ident', action='store_true', help='Ident SPAD')
+    parser.add_argument('--us', action='store_true', help='Insert microseconds into SPAD[1]')
+    parser.add_argument('--no_es', action='store_false', help='Disable the event signature')
 
     parser.add_argument('uutnames', nargs='+', help="uut hostnames")
     return parser
