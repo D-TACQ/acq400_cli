@@ -34,7 +34,7 @@ def main(args):
 
 def get_parser():
     parser = ArgParser(description='Upload AWG waveforms to UUTs')
-    parser.add_argument('--trigger', '--trg', default='EXT,RISING', type=ArgTypes.signal_triplet, help='AWG Trigger')
+    parser.add_argument('--trigger', '--trg', default='SOFT,RISING', type=ArgTypes.signal_triplet, help='AWG Trigger')
     parser.add_argument('--rgm', default='0,0,0', type=ArgTypes.rgm_triplet, help='RGM triplet')
     parser.add_argument('--burstlen', default=0, type=int, help='Burstlen value')
     parser.add_argument('--clock', '--clk', default=None, type=ArgTypes.clock_triplet, help='clk triplet')
