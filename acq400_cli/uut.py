@@ -741,7 +741,7 @@ class Carrier:
         return int(getattr(self.s0, f"SIG__{signal}_{counter}__COUNT"))
 
     def set_line_source(self, source, validate=True):
-        """Config sync line source in for master UUT"""
+        """Config line source in"""
         
         if not self.is_master: return
 
@@ -761,7 +761,6 @@ class Carrier:
         if source == 'INT': self.s0.SIG__SRC__TRG__1 = "STRIG"
         if source == 'SOFT': self.s0.SIG__SRC__TRG__1 = "STRIG"
         if source == 'WRTT1': self.s0.SIG__SRC__TRG__1 = "WRTT1"
-        #if source == 'AUTO': self.s0.SIG__SRC__TRG__1 = "NONE"
         if source == 'AUTO': self.s0.SIG__SRC__TRG__1 = "STRIG"
 
         if not validate: return
@@ -775,6 +774,11 @@ class Carrier:
             logging.warning(f"Free Running Trigger Detected - Changing {source} -> FREE")
             self.s0.SIG__SRC__TRG__0 = "nc" # nc is a placeholder for HDMI
 
+        #Disable soft trigger to prevent RUN before slaves ARMED
+        if source == 'AUTO' and self.auto_soft_enabled:
+            logging.warning(f"Auto Soft Trigger Detected - Changing {source} -> NONE")
+            self.s0.SIG__SRC__TRG__1 = "NONE"
+    
     def trigger_line(self, siggen=None, line=0):
         """Trigger capture based on UUT signal config"""
 
@@ -808,10 +812,11 @@ class Carrier:
             if trigger_source == 'NONE':
                 logging.info("Enabling Soft trigger")
                 self.s0.SIG__SRC__TRG__1 = 'STRIG'
-                logging.info(f'Soft triggering')
-                self.trigger_soft_trigger()
+                if not self.auto_soft_enabled:
+                    logging.info(f'Soft triggering')
+                    self.trigger_soft_trigger()
             
-            if trigger_source == 'STRIG':
+            if trigger_source == 'STRIG' and not self.auto_soft_enabled:
                 logging.info(f'Soft triggering')
                 self.trigger_soft_trigger()
 

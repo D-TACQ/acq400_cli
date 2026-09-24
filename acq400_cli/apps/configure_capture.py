@@ -25,6 +25,9 @@ def main(args):
         spad=args.spad,
         validate=False,
     )
+    
+    if args.trigger_source:
+        uuts.set_line_source(args.trigger_source, validate=False)
 
     uuts.ident_spad(args.ident)
     uuts.set_spad1_count(args.us)
