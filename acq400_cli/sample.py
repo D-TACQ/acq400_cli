@@ -11,10 +11,13 @@ class SampleFormat:
         """Convert UUT to sample spec"""
         spec = []
         for site in uut.agg_sites:
-            data_type = 'ADC' if uut[site].is_ai else 'DIO'
             data_size = uut[site].data_size
             nchan = uut[site].nchan
-            spec.append((nchan, (data_size, data_type)))
+            if uut[site].is_ai:
+                spec.append((nchan, (data_size, 'ADC')))
+            else:
+                spec.append(((nchan * data_size) // 4, (4, 'DIO')))
+
 
         spad_length = uut.spad_length
         if spad_length > 0:
