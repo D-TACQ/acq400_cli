@@ -328,7 +328,7 @@ class Plotter:
        
             
             padding = min(0.4, 0.03 + len(footer) * 0.012)
-            fig.tight_layout(rect=[0, padding, 1, 1])
+            fig.tight_layout(rect=[0, padding, 1, 0.98])
             fig.text(
                 0.01, padding * 0.5,
                 "\n".join(footer),
