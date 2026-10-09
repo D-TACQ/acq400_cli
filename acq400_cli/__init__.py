@@ -13,7 +13,7 @@ from acq400_cli.uut import Carrier, Collection, factory
 from acq400_cli.parser import ArgTypes, ArgParser
 from acq400_cli.utils import generate_timestamp, SigGen, Ansi
 from acq400_cli.plotting import Plotter, PCFG
-from acq400_cli.clients import StreamClient, StatusMontior
+from acq400_cli.clients import StatusMontior
 from acq400_cli.data import parse_filename_parts
 from acq400_cli.constants import *
 
