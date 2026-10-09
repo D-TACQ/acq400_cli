@@ -63,30 +63,6 @@ acq400_cli stream_to_host --trigger=EXT,RISING --samples=1M --filebytes=10MB <uu
 ```
 Note: `--filebytes` will round up to the nearest whole sample.
 
-### Configure Sites
-
-Configure sites capture format
-
-- **run0** - Set enabled sites and spad size:
-```bash
-acq400_cli configure_sites --sites=1,2,3 --spad=8 <uutnames>
-```
-
-- **Spad ident** - Add markers into spad columns:
-```bash
-acq400_cli configure_sites --ident <uutnames>
-```
-
-- **Spad microsecond** - Add microsecond to spad[1]:
-```bash
-acq400_cli configure_sites --us <uutnames>
-```
-
-- **Disable event signature** - Disable es in data:
-```bash
-acq400_cli configure_sites --no_es <uutnames>
-```
-
 ### Configure Clocking
 
 Configure UUTs sync role
@@ -99,26 +75,46 @@ acq400_cli configure_clock --clk=1M <uutnames>
 
 ### Configure Capture
 
-Configure UUTs capture
+Configure UUTs capture.
 
-- **Post** - Capture 100K samples and an external trigger
+- **Post** - Capture 100K samples on an external trigger:
 ```bash
 acq400_cli configure_capture --trigger=EXT,RISING --post=100K <uutnames>
 ```
 
 - **Pre + Post** - Capture 50K pre 50K post samples on external event:
 ```bash
-acq400_cli configure_capture --pre=50K --post=50K --trigger=SOFT,RISING --event=EXT,RISING <uutnames>
+acq400_cli configure_capture --pre=50K --post=50K --trigger=AUTO,RISING --event0=EXT,RISING <uutnames>
 ```
 
-- **Stream** - Stream with mask on external trigger
+- **RTM Stream** - Stream 5000 sample bursts on external trigger:
+```bash
+acq400_cli configure_capture --rgm=RTM,RISING --translen=5000 --trigger=AUTO,RISING <uutnames>
+```
+
+- **Stream** - Stream with mask on external trigger:
 ```bash
 acq400_cli configure_capture --stream_mask=1-4 --trigger=EXT,RISING <uutnames>
 ```
 
-- **RTM Stream** - Stream 5000 sample bursts on external trigger
+- **run0** - Set enabled sites and spad size:
 ```bash
-acq400_cli configure_capture --rgm=RTM,RISING --translen=5000 --trigger=SOFT,RISING <uutnames>
+acq400_cli configure_capture --sites=1,2,3 --spad=8 <uutnames>
+```
+
+- **Spad ident** - Add markers into spad columns:
+```bash
+acq400_cli configure_capture --ident <uutnames>
+```
+
+- **Spad microsecond** - Add microsecond to spad[1]:
+```bash
+acq400_cli configure_capture --us <uutnames>
+```
+
+- **Disable event signature** - Disable ES in data:
+```bash
+acq400_cli configure_capture --no_es <uutnames>
 ```
 
 ### Load GPG
@@ -275,6 +271,33 @@ acq400_cli upload_waveform <uutnames> sine.dat --rgm=RTM,RISING --burstlen=5000 
 | **--clock**, **--clk** | — | AWG clock |
 | **--clock_div**, **--clkdiv** | — | AWG clock divider |
 
+#### Upload Waveform Segments
+
+Load each file into a successive AWG segment (`A`, `B`, `C`, …) in REARM mode, then keep feeding a play pattern until Ctrl+C. Requires `awg_max_seg` large enough for the file count.
+
+- **Default pattern** - files map to `A`, `B`, `C`; pattern is `ABC`:
+```bash
+acq400_cli upload_waveform_segment <uutnames> wfA.dat wfB.dat wfC.dat
+```
+
+- **Custom pattern** - play order `BCA` on each trigger:
+```bash
+acq400_cli upload_waveform_segment <uutnames> wfA.dat wfB.dat wfC.dat --pattern=BCA
+```
+
+Press Ctrl+C to stop feeding the pattern.
+
+| Arg | Default | Description |
+|-----|---------|-------------|
+| **uutnames** | — | UUT hostnames |
+| **filepaths** | — | Waveform files (index 0 → segment `A`) |
+| **--pattern** | `ABC…` from file count | Segment play letters (`BCA`) |
+| **--trigger**, **--trg** | `SOFT,RISING` | AWG trigger (`SOURCE,SENSE`) |
+| **--rgm** | `0,0,0` | RGM trigger |
+| **--burstlen** | `0` | Burst length |
+| **--clock**, **--clk** | — | AWG clock |
+| **--clock_div**, **--clkdiv** | — | AWG clock divider |
+
 ### Stream AWG
 
 Stream waveform files to AO modules continuously until Ctrl+C.
@@ -306,6 +329,29 @@ acq400_cli stream_to_awg <uutnames> sine.dat --rgm=RTM,RISING --burstlen=5000 --
 
 Note: Stop with Ctrl+C.
 
+
+### Generate Waveform
+
+Build a waveform from a `.wdef` file **or** from spec args. `--nchan`, `--length`, and `--data_size` are always required. `--wavedef` cannot be combined with spec args.
+
+- **From wdef**:
+```bash
+acq400_cli generate_waveform --wavedef=my_wave.wdef --nchan=32 --length=3125 --data_size=2
+```
+
+- **From args** — 3 cycles of 2001 samples on channels 1 and 3:
+```bash
+acq400_cli generate_waveform --nchan=32 --length=6003 --data_size=2 --chan=1,3 --wavelength=2001 --cycles=3
+```
+
+- **Save** — `--save` writes a `.wdat` under `--root` (`WAVEFORMS`). `--save=label` sets the filename label; with `--wavedef` the label is the wdef name; otherwise a timestamp is used.
+
+```bash
+acq400_cli generate_waveform --nchan=32 --length=6003 --data_size=2 --chan=1,3 --wavelength=2001 --cycles=3 --save=bingbong --no_plot
+```
+
+All wdef options can be used as args for quick simple waveforms.
+
 ## Definitions
 
 ### Triggers
@@ -322,14 +368,14 @@ Capture commands `--trigger`, `--event0`, `--event1`
 
 | Source | Description |
 |--------|-------------|
-| **EXT** | External trigger input (front panel) |
-| **HDMI** | HDMI trigger input |
-| **WRTT0** | White Rabbit trigger (line 0) |
-| **FREE** | Free running. Only enables trigger when UUTs are armed |
-| **INT** | Software soft trigger |
-| **SOFT** | Software soft trigger |
-| **WRTT1** | White Rabbit trigger (line 0) |
-| **AUTO** | Auto soft trigger. |
+| **EXT** | External Trigger input (front panel) |
+| **HDMI** | HDMI Trigger input |
+| **WRTT0** | White Rabbit Trigger (line 0) |
+| **FREE** | Free running. Disables Trigger in |
+| **INT** | Software Trigger |
+| **SOFT** | Software Trigger |
+| **WRTT1** | White Rabbit Trigger (line 1) |
+| **AUTO** | Auto Software Trigger |
 
 #### Sense:
 
@@ -389,35 +435,31 @@ acq400_cli plot_datafile --pcfg=my_plot.pcfg2 <datafiles>
 
 ### Waveform Definition File (.wdef)
 
-A `.wdef` file defines waveforms for `generate_waveform`.
-
-Each line defines **one waveform placement**. Options are separated by **semicolons** (`;`) as `key=value` pairs
-
-
-```bash
-acq400_cli generate_waveform --wavedef=my_wave.wdef --nchan=32 --length=3125 --data_size=2
-```
+Each line defines **one waveform placement**. Options are separated by **semicolons** (`;`) as `key=value` pairs.
 
 **Example**
 
 ```text
 # full-scale sine of 3125 samples on all channels
 chan=0;wavelength=3125;shape=SINE
-```
 
+# half-scale sine on a 0.5 channel baseline
+chan=1,3;wavelength=2001;cycles=1;scale=0.5;chan_offset=0.5
+```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | **chan** | `0` | Channels to write. `0` / `ALL` = all channels, or comma list and/or `start:end:stride` ranges. |
 | **index** | `0` | Sample index where the waveform is anchored. Comma list and/or `start:end:stride` ranges. |
-| **wavelength** | `5000` | Samples per cycle. Accepts units (`50K`). |
+| **wavelength** | `5000` | Samples per cycle. |
 | **cycles** | `1` | Number of cycles. `-1` fills from `index` to the end of the buffer. |
 | **truncate** | `0` | Max samples to keep from the generated waveform (`0` = no truncate). |
 | **skip** | `0` | Samples to drop from the start of the generated waveform. |
 | **sense** | `RISING` | `RISING` — waveform starts at `index`; `FALLING` — waveform ends at `index`. |
 | **phase_offset** | `0` | Phase offset in **radians** (e.g. `3.14159` for invert). |
-| **dc_offset** | `0` | Vertical offset as a fraction of full scale (applied only to the segment). |
-| **shape** | `SINE` | Waveform type: `SINE`, `SQUARE`, `RAMP`, or `DC` (flat fill from `index` to end at `dc_offset`). |
+| **wave_offset** | `0` | Vertical offset of the generated segment as a fraction of full scale. |
+| **chan_offset** | `0` | Vertical offset of the whole channel as a fraction of full scale. |
+| **shape** | `SINE` | Waveform type: `SINE`, `SQUARE`, `RAMP`, or `DC` |
 | **scale** | `1` | Amplitude as a fraction of full scale for the channel data size (`1` = full scale). |
 
 
