@@ -392,22 +392,23 @@ class Plotter:
 
                 x = self.timebase[index]
 
-                if not row.get_ylabel() or spec.y_label:
-                    if spec.y_label:
-                        y_label = spec.y_label
-                    elif spec.view == 'VOLTS':
-                        y_label = 'Volts (V)'
-                    elif spec.view == 'POWER':
-                        y_label = 'Power (mW)'
-                    else:
-                        y_label = 'Codes'
-                    row.set_ylabel(y_label)
-
                 if spec.mask:
                     mask = self.__sample_mask(len(source), spec.mask)
-                    x = x[:int(mask.sum())] 
+                    x = x[:int(mask.sum())]
 
                 if spec.chan is not None:
+
+                    if not row.get_ylabel() or spec.y_label:
+                        if spec.y_label:
+                            y_label = spec.y_label
+                        elif spec.view == 'VOLTS':
+                            y_label = 'Volts (V)'
+                        elif spec.view == 'POWER':
+                            y_label = 'Power (mW)'
+                        else:
+                            y_label = 'Codes'
+                    row.set_ylabel(y_label)
+
                     for chan in spec.chan:
                         logging.info(f"Plot CH{int(chan):03} from source[{index}] to figure[{spec.figure}] row[{spec.row}]")
                    
@@ -424,6 +425,17 @@ class Plotter:
                 if spec.spad is not None:
                     for spad in spec.spad:
                         logging.info(f"Plot SPD{int(spad):02} from source[{index}] to figure[{spec.figure}] row[{spec.row}]")
+
+                        if not row.get_ylabel() or spec.y_label:
+                            if spec.y_label:
+                                y_label = spec.y_label
+                            elif spad == 0:
+                                y_label = 'Sample Count'
+                            elif spad == 1:
+                                y_label = 'Microseconds (us)'
+                            else:
+                                y_label = 'Codes'
+                            row.set_ylabel(y_label)
 
                         label_fmt = 'SPD{chan}'
                         y = source.spd.get(int(spad))
