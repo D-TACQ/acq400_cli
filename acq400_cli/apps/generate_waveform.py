@@ -27,7 +27,8 @@ def main(args):
                 'skip': args.skip,
                 'sense': args.sense,
                 'phase_offset': args.phase,
-                'dc_offset': args.dc,
+                'wave_offset': args.wave_offset,
+                'chan_offset': args.chan_offset,
                 'shape': args.shape,
                 'scale': args.scale,
             }.items()
@@ -59,10 +60,11 @@ def get_parser():
     parser.add_argument('--nchan', required=True, type=int, help='Total Channels')
     parser.add_argument('--length', required=True, type=ArgTypes.int_with_unit, help='Channel length in samples')
     parser.add_argument('--data_size', required=True, type=ArgTypes.int_with_unit, help='Channel size in bytes')
-    parser.add_argument('--wavedef', default=None, type=ArgTypes.filepath, help="Waveform def file")
     parser.add_argument('--save', nargs='?', const=True, default=False, help="Save waveform, optionally --save=label")
     parser.add_argument('--root', default="WAVEFORMS", type=str, help="Waveform save root dir")
     parser.add_argument('--no_plot', action='store_true', help="Don't plot waveform")
+
+    parser.add_argument('--wavedef', default=None, type=ArgTypes.filepath, help="Waveform def file")
 
     parser.add_argument('--chan', default=None, help='Channels to write')
     parser.add_argument('--index', default=None, help='Sample index where the waveform is anchored')
@@ -72,7 +74,8 @@ def get_parser():
     parser.add_argument('--skip', default=None, help='Samples to drop from the start of the generated waveform')
     parser.add_argument('--sense', default=None, help='RISING starts at index; FALLING ends at index')
     parser.add_argument('--phase', default=None, help='Phase offset in radians')
-    parser.add_argument('--dc', default=None, help='Vertical offset as a fraction of full scale')
+    parser.add_argument('--wave_offset', default=None, help='dc offset of the waveform segment')
+    parser.add_argument('--chan_offset', default=None, help='dc offset of the whole channel')
     parser.add_argument('--shape', default=None, help='Waveform type: SINE, SQUARE, RAMP, or DC')
     parser.add_argument('--scale', default=None, help='Amplitude as a fraction of full scale')
 

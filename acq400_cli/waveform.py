@@ -42,7 +42,8 @@ class WaveformSpec:
     Skip: Total samples to trim from start of waveform
     Sense: RISING (starts from index) or FALLING (ends at index)
     Phase Offset: Waveform offset in radians
-    DC Offset: Verical offset as a fraction of full scale
+    Wave Offset: Vertical offset of the generated segment as a fraction of full scale
+    Chan Offset: Vertical offset of the whole channel
     Shape: Waveform type (SINE, SQUARE, RAMP, DC)
     Scale: Amplitude relative to full scale
     Bits: TODO
@@ -55,7 +56,8 @@ class WaveformSpec:
     skip: int
     sense: SENSE
     phase_offset: float
-    dc_offset: float
+    wave_offset: float
+    chan_offset: float
     shape: WAVE_FUNC
     scale: float
 
@@ -70,7 +72,8 @@ class WaveformSpec:
             skip = int(spec.get('skip', 0)),
             sense = SENSE(spec.get('sense', 1)),
             phase_offset = float(spec.get('phase_offset', 0)),
-            dc_offset = float(spec.get('dc_offset', 0)),
+            wave_offset = float(spec.get('wave_offset', 0)),
+            chan_offset = float(spec.get('chan_offset', 0)),
             shape = WAVE_FUNC(spec.get('shape', 'SINE')),
             scale = float(spec.get('scale', 1)),
             #bits
@@ -95,16 +98,33 @@ class Waveform(np.ndarray):
         obj.sample_format = SampleFormatFromTag(f"{nchan}CHx{dsize}B")
         info = np.iinfo(chan_dtype)
         obj.dtype_amplitude = min(abs(info.min), info.max)
+        obj.chan_offsets = {}
 
         for spec in obj.specs:
             logging.debug(f"Inserting spec {spec}")
             obj.__apply_spec(spec)
+
+        obj.__apply_chan_offsets()
         return obj
+
+    def __set_chan_offset(self, channels, offset):
+        """Record once-per-channel offset (last write wins)"""
+        for chan in channels:
+            self.chan_offsets[chan] = offset
+
+    def __apply_chan_offsets(self):
+        """Add recorded channel offsets after all waveform inserts"""
+        info = np.iinfo(self.chan_dtype)
+        for chan, offset in self.chan_offsets.items():
+            self[chan] = np.clip(self[chan] + offset * self.dtype_amplitude, info.min, info.max)
 
     def __apply_spec(self, spec):
         """Apply specs to Waveform arrays"""
         indexes = spec.index if isinstance(spec.index, (list, tuple)) else [spec.index]
         channels = list(self.__get_channels(spec.chan))
+
+        if spec.chan_offset != 0:
+            self.__set_chan_offset(channels, spec.chan_offset)
 
         for index in indexes:
             if isinstance(index, tuple):
@@ -175,7 +195,7 @@ class Waveform(np.ndarray):
         if total_wavelength <= 0: return np.array([], dtype=self.chan_dtype)
 
         if spec.shape == WAVE_FUNC.DC:
-            return self.__scale_waveform(np.ones(total_wavelength), 0.0, spec.dc_offset)
+            return self.__scale_waveform(np.ones(total_wavelength), 0.0, spec.wave_offset)
 
         if spec.cycles == -1:
             num_cycles = total_wavelength / spec.wavelength
@@ -198,7 +218,7 @@ class Waveform(np.ndarray):
 
         if spec.skip: wave = wave[spec.skip:]
 
-        return self.__scale_waveform(wave, spec.scale, spec.dc_offset)
+        return self.__scale_waveform(wave, spec.scale, spec.wave_offset)
 
     def __calculate_total_wavelength(self, spec, index):
         """Calculate total wavelength from wavelength and cycles"""
@@ -208,9 +228,9 @@ class Waveform(np.ndarray):
             available = spec.cycles * spec.wavelength
         return max(0, int(available))
 
-    def __scale_waveform(self, wave, scale, dc_offset=0.0):
+    def __scale_waveform(self, wave, scale, wave_offset=0.0):
         """Scale waveform to (dtype max * scale)"""
-        full_scale = (wave * scale + dc_offset) * self.dtype_amplitude
+        full_scale = (wave * scale + wave_offset) * self.dtype_amplitude
         info = np.iinfo(self.chan_dtype)
         full_scale = np.clip(full_scale, info.min, info.max)
         return full_scale.astype(self.chan_dtype, copy=False)
