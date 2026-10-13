@@ -270,6 +270,7 @@ acq400_cli upload_waveform <uutnames> sine.dat --rgm=RTM,RISING --burstlen=5000 
 | **--burstlen** | `0` | Burst length |
 | **--clock**, **--clk** | — | AWG clock |
 | **--clock_div**, **--clkdiv** | — | AWG clock divider |
+| **--prepend0** | off | Prepend one empty distributor sample (zeros) to the start of the waveform |
 
 #### Upload Waveform Segments
 

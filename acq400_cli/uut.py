@@ -1123,7 +1123,7 @@ class Carrier:
         new_is_long = nbytes > bufferlen
         return system_is_long == new_is_long
 
-    def load_awg(self, waveform, mode='ONCE', repeat=0):
+    def load_awg(self, waveform, mode='ONCE', repeat=0, prepend=None):
         """Load waveform into AWG"""
         if not self.ao_master: return False
 
@@ -1137,13 +1137,16 @@ class Carrier:
         mode = AWG_MODE(mode)
         port = mode.value
         waveform = waveform.tobytes()
+        if prepend:
+            dssb = int(self.ao_master.nchan) * int(self.ao_master.data_size)
+            waveform = bytes(dssb) + waveform
         length = len(waveform)
         bufferlen = int(self.s0.bufferlen)
 
         if mode == AWG_MODE.CONTINUOUS and length and length < 4 * bufferlen:
             repeat = (4 * bufferlen) // length - 1
             if (4 * bufferlen) % length:
-                logging.warning(f"{self.hostname} waveform is not sized correctly for seamless playing")
+                logging.warning(f"{self.hostname} waveform is not sized correctly for seamless play")
 
 
         if not self.valid_awg_waveform(length * (1 + repeat)):

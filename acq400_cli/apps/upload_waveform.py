@@ -26,6 +26,7 @@ def main(args):
             waveform=waveform,
             mode=args.mode,
             repeat=0,
+            prepend=args.prepend0
         )
         if idx < len(args.filepaths) - 1:
             print(f"Wait for AWG IDLE on {uuts.names}")
@@ -40,6 +41,7 @@ def get_parser():
     parser.add_argument('--clock', '--clk', default=None, type=ArgTypes.clock_triplet, help='clk triplet')
     parser.add_argument('--clock_div', '--clkdiv', default=None, type=ArgTypes.signal_triplet, help='gpg clk triplet')
     parser.add_argument('--mode', default='ONCE', choices=list(AWG_MODE.__members__), type=str.upper, help='AWG mode')
+    parser.add_argument('--prepend0', action='store_true', help='prepend empty sample to start of waveform')
 
     parser.add_argument('uutnames_and_filepaths', nargs='+', action=ArgTypes.uutnames_and_filepaths, help="uut hostnames and waveforms")
     return parser
