@@ -295,7 +295,7 @@ class Carrier:
             if self.ao_master: set_clk = int(self.s0.SIG__CLK_MB__SET) / int(self.ao_master.CLKDIV)
             live_clk = float(self.s0.SIG__CLK_S1__FREQ)
             if abs(live_clk - set_clk) > 0.01 * abs(set_clk):
-                logging.warning(f"{self.hostname} Using Live clock")
+                logging.warning(f"{self.hostname} Using Live clock ({live_clk:.0f} vs SET {set_clk:.0f})")
                 return round(float(live_clk), -3)
             return set_clk
 
@@ -770,16 +770,16 @@ class Carrier:
 
         # Free running triggers need to be disabled until UUT is armed
         if source == 'EXT' and self.get_counter_freq() > 0:
-            logging.warning(f"Free Running Trigger Detected - Changing {source} -> FREE")
+            logging.info(f"Free Running Trigger Detected - Disabling EXT")
             self.s0.SIG__SRC__TRG__0 = "NONE" # NONE is a placeholder for EXT
 
         if source == 'HDMI' and self.get_counter_freq() > 0:
-            logging.warning(f"Free Running Trigger Detected - Changing {source} -> FREE")
+            logging.info(f"Free Running Trigger Detected - Disabling HDMI")
             self.s0.SIG__SRC__TRG__0 = "nc" # nc is a placeholder for HDMI
 
         #Disable soft trigger to prevent RUN before slaves ARMED
         if source == 'AUTO' and self.auto_soft_enabled:
-            logging.warning(f"Auto Soft Trigger Detected - Changing {source} -> NONE")
+            logging.info(f"Auto Soft Trigger Detected - Disabling STRIG")
             self.s0.SIG__SRC__TRG__1 = "NONE"
     
     def trigger_line(self, siggen=None, line=0):
