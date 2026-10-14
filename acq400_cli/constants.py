@@ -213,6 +213,10 @@ class CLK_SRC_IDX(AutoIntEnum):
     GPG1=   2
     COMM_B= 3
 
+class SIGNEDNESS(AutoIntEnum):
+    SIGNED = 0
+    UNSIGNED = 1
+
 class CLK_MODE(AutoIntEnum):
     INT=    -1
     EXT=    0

@@ -1,5 +1,6 @@
 from itertools import groupby
 from acq400_cli.utils import DotDict
+from acq400_cli.constants import SIGNEDNESS
 import numpy as np
 
 class SampleFormat:
@@ -14,14 +15,14 @@ class SampleFormat:
             data_size = uut[site].data_size
             nchan = uut[site].nchan
             if uut[site].is_ai:
-                spec.append((nchan, (data_size, 'ADC')))
+                signedness = SIGNEDNESS.UNSIGNED if 0 in uut[site].input_range[0] else SIGNEDNESS.SIGNED
+                spec.append((nchan, ((data_size, signedness), 'ADC')))
             else:
-                spec.append(((nchan * data_size) // 4, (4, 'DIO')))
-
+                spec.append(((nchan * data_size) // 4, ((4, SIGNEDNESS.UNSIGNED), 'DIO')))
 
         spad_length = uut.spad_length
         if spad_length > 0:
-            spec.append((spad_length, (4, 'SPD')))
+            spec.append((spad_length, ((4, SIGNEDNESS.UNSIGNED), 'SPD')))
         return spec
 
     def _tag_to_spec(self, tag):
@@ -30,14 +31,16 @@ class SampleFormat:
         for part in tag.upper().split(self.delineator):
             if part.endswith('DIO'):
                 nchan = int(part.split('DIO')[0])
-                spec.append((nchan, (4, 'DIO')))
+                spec.append((nchan, ((4, SIGNEDNESS.UNSIGNED), 'DIO')))
             elif part.endswith('SPD'):
                 nchan = int(part.split('SPD')[0])
-                spec.append((nchan, (4, 'SPD')))
+                spec.append((nchan, ((4, SIGNEDNESS.UNSIGNED), 'SPD')))
             else:
                 nchan = int(part.split('CHX')[0])
-                data_size = int(part.split('CHX')[1].split('B')[0])
-                spec.append((nchan, (data_size, 'ADC')))
+                size_part = part.split('CHX')[1].split('B')[0]
+                signedness = SIGNEDNESS.UNSIGNED if 'U' in size_part else SIGNEDNESS.SIGNED
+                data_size = int(size_part.replace('U', ''))
+                spec.append((nchan, ((data_size, signedness), 'ADC')))
         return spec
 
     def _build_sample(self, spec, mask=None, spad_enabled=True):
@@ -50,12 +53,14 @@ class SampleFormat:
 
         logical_chan = 0
         physical_chan = 0
-        min_chan_size = min(s[1][0] for s in spec)
+        min_chan_size = min(s[1][0][0] for s in spec)
     
-        for nchan, (chan_size, chan_type) in spec:
+        for nchan, ((chan_size, signedness), chan_type) in spec:
 
-            if chan_type == 'ADC' and chan_size == 2: dtype = np.int16
-            if chan_type == 'ADC' and chan_size == 4: dtype = np.int32
+            if chan_type == 'ADC' and chan_size == 2 and signedness == SIGNEDNESS.SIGNED: dtype = np.int16
+            if chan_type == 'ADC' and chan_size == 2 and signedness == SIGNEDNESS.UNSIGNED: dtype = np.uint16
+            if chan_type == 'ADC' and chan_size == 4 and signedness == SIGNEDNESS.SIGNED: dtype = np.int32
+            if chan_type == 'ADC' and chan_size == 4 and signedness == SIGNEDNESS.UNSIGNED: dtype = np.uint32
             if chan_type == 'DIO': dtype = np.uint32
             if chan_type == 'SPD': dtype = np.uint32
 
@@ -68,6 +73,7 @@ class SampleFormat:
 
                 channel = DotDict({
                     'chan_size': chan_size,
+                    'signedness': signedness,
                     'chan_type': chan_type,
                     'logical': [logical_chan],
                     'physical': [physical_chan],
@@ -95,21 +101,23 @@ class SampleFormat:
 
     def __generate_spec(self):
         """Generate spec"""""
-        specs = ((self.channels[c].chan_size, self.channels[c].chan_type) for c in self.channels)
-        return [[len(list(group)), size] for size, group in groupby(specs)]
+        specs = ((self.channels[c].chan_size, self.channels[c].signedness, self.channels[c].chan_type) for c in self.channels)
+        return [[len(list(group)), key] for key, group in groupby(specs)]
 
     def __generate_tag(self):
         """Generate tag"""
         tag = []
-        for nchan, (chan_size, chan_type) in self.spec:
-            if chan_type == 'ADC': label = "{nchan}CHx{chan_size}B"
+        for nchan, (chan_size, signedness, chan_type) in self.spec:
+            if chan_type == 'ADC':
+                signedness_char = 'u' if signedness == SIGNEDNESS.UNSIGNED else ''
+                label = f"{{nchan}}CHx{{chan_size}}{signedness_char}B"
             if chan_type == 'DIO': label = "{nchan}DIO"
             if chan_type == 'SPD': label = "{nchan}SPD"
             tag.append(label.format(nchan=nchan, chan_size=chan_size))
         return self.delineator.join(tag)
 
     def __generate_hexdump(self):
-        fmt = [f'{nchan}/{chan_size} "%0{chan_size * 2}x,"' for nchan, (chan_size, chan_type) in self.spec]
+        fmt = [f'{nchan}/{chan_size} "%0{chan_size * 2}x,"' for nchan, (chan_size, signedness, chan_type) in self.spec]
         fmt.append(r'"\n"')
         fmt_str = ' '.join(fmt)
         return f"hexdump -e '{fmt_str}'"
