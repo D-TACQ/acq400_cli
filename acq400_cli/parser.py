@@ -94,6 +94,7 @@ class ArgTypes:
         parts = arg.upper().split(',')
         try:
             if len(parts) == 1:
+                if parts[0] == 'OFF': return Triplet([0, 0, 0])
                 trigger = Triplet([1, SIG_LINE[parts[0]].value, 1])
                 trigger.source = parts[0]
             if len(parts) == 2:
