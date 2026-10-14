@@ -624,13 +624,16 @@ class Carrier:
         savepath = getattr(datafile, 'name', None)
         logging.debug(f"Streaming to host {target_bytes} Bytes")
 
-        target_bytes = int((target_bytes // sample_format.bytes) * sample_format.bytes)
-        nsamples = int(bufferlen // sample_format.bytes)
-        bufferlen = int(nsamples * sample_format.bytes)
+        sample_bytes = int(sample_format.dtype.itemsize)
+        if sample_format.bytes != sample_bytes: logging.warning(f"{self.hostname} sample bytes {sample_format.bytes} != dtype {sample_bytes}, using dtype")
+
+        target_bytes = int((target_bytes // sample_bytes) * sample_bytes)
+        nsamples = int(bufferlen // sample_bytes)
+        bufferlen = int(nsamples * sample_bytes)
 
         buffer = bytearray(bufferlen)
         view = memoryview(buffer).cast('B')
-        array = np.ndarray((nsamples,), dtype=sample_format.dtype, buffer=view)
+        array = np.ndarray((nsamples,), dtype=sample_format.dtype, buffer=buffer)
 
         spads = sample_format.types.get('SPD', [])
         spad0_chan = spads[0] if spads else None
@@ -643,7 +646,7 @@ class Carrier:
             write_task_status({
                 'total_bytes': total_bytes,
                 'target_bytes': target_bytes,
-                'ssb': sample_format.bytes,
+                'ssb': sample_bytes,
                 'missed': int(missed),
                 'time_start': time_start,
                 'spad0_chan': spad0_chan,
@@ -691,7 +694,7 @@ class Carrier:
 
         if datafile: datafile.close()
 
-        logging.info(f"{self.hostname} Finshed {total_bytes >> 20}MB ({total_bytes // sample_format.bytes} Samples) streamed to {savepath}")
+        logging.info(f"{self.hostname} Finshed {total_bytes >> 20}MB ({total_bytes // sample_bytes} Samples) streamed to {savepath}")
         if missed > 0: logging.warning(f"{self.hostname} Stream {missed} missing samples")
         return savepath
 

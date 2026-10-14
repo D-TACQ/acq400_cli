@@ -14,6 +14,7 @@ import time
 
 def main(args):
     uuts = Collection(args.uutnames)
+
     uuts.abort_capture()
 
     print(f"Configuring {uuts.names}")
@@ -27,7 +28,7 @@ def main(args):
     timestamp = generate_timestamp() if args.timestamp else None
     stream_tasks = {}
 
-    print(f"Start stream {uuts.names}")
+    print(f"Start stream tasks: {uuts.names}")
     for uut in uuts:
         if not uut.stream_enabled:
             logging.error(f"Streaming not enabled on {uut.hostname}")
@@ -62,7 +63,7 @@ def main(args):
     if not stream_tasks: return
     
     for uutname, task in stream_tasks.items(): uuts[uutname].print_stream_status(task.thread.status)
-
+    print("wait_for_arm")
     uuts.wait_for_arm()
     print('Armed')
 
@@ -87,12 +88,12 @@ def main(args):
 def get_parser():
     parser = ArgParser(description='Stream data from UUTs to host')
 
-    parser.add_argument('--trigger', default='1,1,1', type=ArgTypes.signal_triplet, help='Capture Trigger')
-    parser.add_argument('--rgm', default='0,0,0', type=ArgTypes.rgm_triplet, help='RGM triplet')
+    parser.add_argument('--trigger', default='AUTO,RISING', type=ArgTypes.signal_triplet, help='Capture Trigger')
+    parser.add_argument('--rgm', default='OFF', type=ArgTypes.rgm_triplet, help='RGM triplet')
     parser.add_argument('--translen', default=0, type=ArgTypes.int_with_unit, help='Translen value')
     parser.add_argument('--stream_mask', default=None, type=ArgTypes.list_of_channels, help='Stream mask channels')
 
-    parser.add_argument('--seconds', default=10, type=int, help='Total seconds to stream')
+    parser.add_argument('--seconds','--secs', default=10, type=int, help='Total seconds to stream')
     parser.add_argument('--bytes', default=None, type=ArgTypes.int_with_unit, help='Total bytes to stream')
     parser.add_argument('--samples', default=None, type=ArgTypes.int_with_unit, help='Total samples to stream')
 
