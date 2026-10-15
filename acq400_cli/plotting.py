@@ -34,6 +34,7 @@ class FigSpec:
     linestyle: str              #  line style (`-`, `--`, `:`, `-.`)
     color: str | None           #  trace color, or None to use default color cycle
     y_label: str | None         #  override y axis label
+    gridstyle: str | None       #  Set grid line style ('', '-', '--', '-.', ':')
 
 
     @classmethod
@@ -66,6 +67,7 @@ class FigSpec:
             linestyle=spec.get("linestyle", '-'),
             color=spec.get("color", None),
             y_label=spec.get("y_label", None),
+            gridstyle=spec.get('gridstyle', ':'),
         )
 
     @classmethod
@@ -395,6 +397,8 @@ class Plotter:
                 if spec.mask:
                     mask = self.__sample_mask(len(source), spec.mask)
                     x = x[:int(mask.sum())]
+
+                if spec.gridstyle: row.grid(visible=True, linestyle=spec.gridstyle)
 
                 if spec.chan is not None:
 
