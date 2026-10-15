@@ -35,9 +35,18 @@ def main(args):
             continue
 
         sample_format = uut.stream_sample_format
-        filebytes = args.filebytes
-        if args.filesamples: filebytes = sample_format.bytes * args.filesamples
-        if filebytes: logging.info(f"{uut.addr} File {filebytes} Bytes")
+
+        filebytes = None
+        if args.filebytes:
+            filebytes = args.filebytes
+            logging.info(f"{uut.addr} Max filesize {filebytes} Bytes")
+        if args.filesamples:
+            filebytes = sample_format.bytes * args.filesamples
+            logging.info(f"{uut.addr} samples {args.filesamples} Max filesize {filebytes} Bytes")
+        elif args.filebursts:
+            rtm_translen = uut.rtm_translen
+            filebytes = sample_format.bytes * uut.rtm_translen
+            logging.info(f"{uut.addr} rtm_translen: {rtm_translen} Max filesize {filebytes} Bytes")
 
         if args.samples:
             target_bytes = sample_format.bytes * args.samples
@@ -97,8 +106,9 @@ def get_parser():
     parser.add_argument('--bytes', default=None, type=ArgTypes.int_with_unit, help='Total bytes to stream')
     parser.add_argument('--samples', default=None, type=ArgTypes.int_with_unit, help='Total samples to stream')
 
-    parser.add_argument('--filebytes', default=None, type=ArgTypes.int_with_unit, help='Max filesize in bytes')
-    parser.add_argument('--filesamples', default=None, type=ArgTypes.int_with_unit, help='Max filesize in samples')
+    parser.add_argument('--filebytes', default=None, type=ArgTypes.int_with_unit, help='Limit max filesize in bytes')
+    parser.add_argument('--filesamples', default=None, type=ArgTypes.int_with_unit, help='Limit max filesize in samples')
+    parser.add_argument('--filebursts', action='store_true', help='Limit max filesize to rtm_translen')
 
     parser.add_argument('--savedir', default="DATA", help='Save dir')
     parser.add_argument('--save', default=True, action='store_true', help='Save stream to file')
