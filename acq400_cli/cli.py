@@ -8,11 +8,7 @@ import sys
 
 APPS_PATH = "acq400_cli.apps"
 
-
-
-
 def main():
-    # Plain parser: no -h/--help so app-level --help reaches the app parser.
     parser = argparse.ArgumentParser(
         description="ACQ400 Command Line Interface",
         prog="acq400_cli",
@@ -35,7 +31,9 @@ def load_app(app_name):
         app = importlib.import_module(f"{APPS_PATH}.{app_name}")
         if hasattr(app, "get_parser") and hasattr(app, "main"): return app
         logging.error(f"Invalid app '{app_name}'")
-    except ModuleNotFoundError: logging.error(f"Unknown app '{app_name}'")
+    except ModuleNotFoundError: 
+        logging.error(f"Unknown app '{app_name}'")
+        print_apps()
     sys.exit(1)
 
 def run_app(appname, remaining):
@@ -44,7 +42,8 @@ def run_app(appname, remaining):
     parser = app.get_parser()
     parser.prog = f"acq400_cli {appname}"
     args = parser.parse_args(remaining)
-    app.main(args)
+    rc = app.main(args)
+    if rc: sys.exit(rc)
 
 def print_apps():
     """print avalible apps and descriptions"""
