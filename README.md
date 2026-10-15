@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-git clone git://eigg/Software/acq400_cli
+git clone https://github.com/D-TACQ/acq400_cli
 cd acq400_cli
 pip3 install -e .
 ```
