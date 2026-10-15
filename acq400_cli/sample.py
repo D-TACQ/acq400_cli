@@ -97,7 +97,7 @@ class SampleFormat:
         self.dtype = np.dtype(self.dtype)
         self.spec = self.__generate_spec()
         self.tag = self.__generate_tag()
-        self.hexdump = self.__generate_hexdump()
+        self.hexdump = self.gen_hexdump_cmd()
 
     def __generate_spec(self):
         """Generate spec"""""
@@ -116,11 +116,15 @@ class SampleFormat:
             tag.append(label.format(nchan=nchan, chan_size=chan_size))
         return self.delineator.join(tag)
 
-    def __generate_hexdump(self):
-        fmt = [f'{nchan}/{chan_size} "%0{chan_size * 2}x,"' for nchan, (chan_size, signedness, chan_type) in self.spec]
+    def gen_hexdump_cmd(self, as_width=None):
+        fmt = []
+        for nchan, (chan_size, signedness, chan_type) in self.spec:
+            if as_width:
+                nchan = nchan * chan_size // as_width
+                chan_size = as_width
+            fmt.append(f'{nchan}/{chan_size} "%0{chan_size * 2}x,"')
         fmt.append(r'"\n"')
-        fmt_str = ' '.join(fmt)
-        return f"hexdump -e '{fmt_str}'"
+        return f"hexdump -e '{' '.join(fmt)}'"
 
     def __str__(self):
         return f"<SampleFormat tag='{self.tag}' bytes='{self.bytes}'>"
