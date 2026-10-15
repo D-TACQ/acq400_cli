@@ -864,6 +864,7 @@ class Carrier:
             
         if self.ai_master.knob_exists('RTM_TRANSLEN'): 
             self.ai_master.RTM_TRANSLEN = translen
+            logging.info(f"{self.hostname} rtm_translen ajusted ({translen} -> {self.ai_master.RTM_TRANSLEN})")
         
         self.set_stream_mask(stream_mask)
         
