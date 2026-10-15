@@ -216,15 +216,16 @@ acq400_cli plot_datafile --pcfg=<pcfg2 file> <datafiles>
 
 ### Generate Hexdump
 
-Generate hexdump command for current UUT data format
+Print `hexdump` commands for UUTs current stream and transient sample formats.
 
-- **Stream** - Generate command for stream data
+- **Default** — native channel width:
 ```bash
-acq400_cli generate_hexdump --stream <uutnames>
+acq400_cli generate_hexdump <uutnames>
 ```
-- **Transient** - Generate command for transient data
+
+- **As width** — force 2 or 4-bytes (32×2B → 16×4B):
 ```bash
-acq400_cli generate_hexdump --transient <uutnames>
+acq400_cli generate_hexdump --as_width=4 <uutnames>
 ```
 
 ### Demux Datafile
