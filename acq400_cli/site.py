@@ -151,6 +151,16 @@ class Site:
     def help(self):
         return self.knobs
 
+    def get_gain(self, chan):
+        """Get gain for channel"""
+        if not self.is_ai: return None
+        gain = self.get(f"GAIN__{chan:02d}", None)
+        if not gain: return None
+        gain = gain.removeprefix('+/-').removesuffix('V')
+        lower = upper = gain
+        if '-' in gain: lower, upper = gain.split('-')
+        return (-abs(float(lower)), float(upper))
+
     # Attribute methods
     @cached_property
     def knobs(self):
@@ -213,23 +223,20 @@ class Site:
 
     @property
     def gains(self):
-        """return channel gains array"""
-        # EPICS knob slow but enum fast so build lookup table for speed
-        gains = []
-        lookup_table = {}
+        """return array of channel gains"""
+        # GAINS knob is slow so use lookup table
         try:
-            for chan in range(1, self.nchan + 1):
-                lookup_id = self.get(f"gain{chan}")
-                gain = lookup_table.get(lookup_id)
-                if not gain:
-                    gain = self.get(f"GAIN__{chan:02d}").removeprefix('+/-').removesuffix('V')
-                    lookup_table[lookup_id] = gain
-                lower = upper = gain
-                if '-' in gain:
-                    lower, upper = gain.split('-')
-                gains.append((-abs(float(lower)), float(upper)))
+            enums = self.get("gains").strip()
+            lookup = {}
+            gains = []
+            for chan, enum_id in enumerate(enums[:self.nchan], 1):
+                if enum_id not in lookup:
+                    lookup[enum_id] = self.get_gain(chan)
+                gains.append(lookup[enum_id])
             return gains
-        except: return None
+        except:
+            return None
+
 
     @property
     def calibration(self):
