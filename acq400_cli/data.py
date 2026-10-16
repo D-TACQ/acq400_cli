@@ -59,7 +59,7 @@ class UUTData(np.ndarray):
         """Init from file using memory mapping"""
         
         filename_attrs = parse_filename_parts(filepath)
-        metadata = cls.__import_metadata(filepath)
+        metadata = cls.__import_metadata(filepath, filename_attrs.sequence)
 
         if not filename_attrs.format:
             if not format:
@@ -92,12 +92,15 @@ class UUTData(np.ndarray):
         return file_bytes // sample_size
 
     @classmethod
-    def __import_metadata(cls, filepath):
-        """Import metadata if exists"""
+    def __import_metadata(cls, filepath, sequence=None):
+        """Import metadata if exists (always from sequence 000)"""
         metadata = {}
-        filepath = Path(filepath).with_suffix('.meta')
+        filepath = Path(filepath)
+        if sequence: filepath = filepath.with_name(filepath.name.replace(f'.{sequence}.', '.000.', 1))
+        filepath = filepath.with_suffix('.meta')
         if filepath.is_file():
             try:
+                logging.info(f"Importing metadata from {filepath}")
                 with open(filepath, encoding='utf-8') as fp:
                     metadata = json.load(fp)
             except:
