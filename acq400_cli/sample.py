@@ -1,5 +1,5 @@
 from itertools import groupby
-from acq400_cli.utils import DotDict
+from acq400_cli.utils import DotDict, RThread
 from acq400_cli.constants import SIGNEDNESS
 import numpy as np
 
@@ -10,15 +10,20 @@ class SampleFormat:
 
     def _uut_to_spec(self, uut):
         """Convert UUT to sample spec"""
-        spec = []
-        for site in uut.agg_sites:
+        def async_wrapper(site):
             data_size = uut[site].data_size
             nchan = uut[site].nchan
             if uut[site].is_ai:
                 signedness = SIGNEDNESS.UNSIGNED if 0 in uut[site].input_range[0] else SIGNEDNESS.SIGNED
-                spec.append((nchan, ((data_size, signedness), 'ADC')))
-            else:
-                spec.append(((nchan * data_size) // 4, ((4, SIGNEDNESS.UNSIGNED), 'DIO')))
+                return (nchan, ((data_size, signedness), 'ADC'))
+            return ((nchan * data_size) // 4, ((4, SIGNEDNESS.UNSIGNED), 'DIO'))
+
+        threads = []
+        for site in uut.agg_sites:
+            thread = RThread(target=async_wrapper, args=(site,))
+            thread.start()
+            threads.append(thread)
+        spec = [thread.join() for thread in threads]
 
         spad_length = uut.spad_length
         if spad_length > 0:
