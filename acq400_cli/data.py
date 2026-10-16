@@ -134,11 +134,12 @@ class UUTData(np.ndarray):
 class StreamDataFile(io.BufferedWriter):
     """BufferedWriter with optional file rotation"""
 
-    def __init__(self, savedir='DATA', filesize=None, sample_size=None, **kwargs):
+    def __init__(self, savedir='DATA', filesize=None, sample_size=None, max_files=1000, **kwargs):
         if filesize and sample_size: filesize = math.ceil(filesize / sample_size) * sample_size
         self.filesize = filesize
         self.sample_size = sample_size
         self.savedir = savedir
+        self.max_files = max_files
         self.kwargs = kwargs
         self.total_bytes = 0
         self.sequence = 0
@@ -151,7 +152,7 @@ class StreamDataFile(io.BufferedWriter):
 
     def _filepath(self):
         os.makedirs(self.savedir, exist_ok=True)
-        sequence = self.sequence % 1000 if self.filesize is not None else None
+        sequence = self.sequence % self.max_files if self.filesize is not None else None
         filename = gen_data_filename(sequence=sequence, **self.kwargs)
         return Path(os.path.join(self.savedir, filename))
 

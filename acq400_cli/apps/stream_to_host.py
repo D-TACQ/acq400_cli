@@ -63,7 +63,8 @@ def main(args):
                 sample_size=sample_format.bytes,
                 hostname=uut.hostname,
                 format=sample_format.tag,
-                timestamp=timestamp
+                timestamp=timestamp,
+                max_files=args.max_files,
             )
             uut.save_metadata(datafile.name.with_suffix('.meta'))
 
@@ -72,7 +73,7 @@ def main(args):
     if not stream_tasks: return
     
     for uutname, task in stream_tasks.items(): uuts[uutname].print_stream_status(task.thread.status)
-    print("wait_for_arm")
+    print("Waiting for ARM")
     uuts.wait_for_arm()
     print('Armed')
 
@@ -109,6 +110,7 @@ def get_parser():
     parser.add_argument('--filebytes', default=None, type=ArgTypes.int_with_unit, help='Limit max filesize in bytes')
     parser.add_argument('--filesamples', default=None, type=ArgTypes.int_with_unit, help='Limit max filesize in samples')
     parser.add_argument('--filebursts', action='store_true', help='Limit max filesize to rtm_translen')
+    parser.add_argument('--max_files', default=1000, type=int, help='Set max files before overwriting')
 
     parser.add_argument('--savedir', default="DATA", help='Save dir')
     parser.add_argument('--save', default=True, action='store_true', help='Save stream to file')

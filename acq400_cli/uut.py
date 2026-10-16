@@ -695,8 +695,22 @@ class Carrier:
 
         if datafile: datafile.close()
 
-        logging.info(f"{self.hostname} Finshed {total_bytes >> 20}MB ({total_bytes // sample_bytes} Samples) streamed to {savepath}")
+        destination = 'null'
+        if datafile:
+            destination = f"{savepath}"
+            sequence = getattr(datafile, 'sequence', 0)
+            if sequence > 0:
+                max_files = getattr(datafile, 'max_files', 1)
+                nfiles = min(sequence + 1, max_files)
+                overwrites = max(0, sequence + 1 - max_files)
+                if overwrites > 0:
+                    destination += f" (x{nfiles} {overwrites} overwritten)"
+                else:
+                    destination += f" (x{nfiles})"
+
+        logging.info(f"{self.hostname} Finished {total_bytes >> 20}MB ({total_bytes // sample_bytes} Samples) streamed to {destination}")
         if missed > 0: logging.warning(f"{self.hostname} Stream {missed} missing samples")
+
         return savepath
 
     def read_stream_sample(self, nsamples=1):
