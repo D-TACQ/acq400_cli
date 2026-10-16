@@ -77,6 +77,7 @@ class Carrier:
                     self.site_indexes[site.value] = new_site
                     self.site_aliases[site.name] = new_site
                     new_site.carrier = self
+                    if site == SITES.s0: return
 
                     if site.value in self.mgt_sites:
                         self.site_aliases[self.mgt_sites[site.value]] = new_site
