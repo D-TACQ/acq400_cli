@@ -134,7 +134,7 @@ class UUTData(np.ndarray):
 class StreamDataFile(io.BufferedWriter):
     """BufferedWriter with optional file rotation"""
 
-    def __init__(self, savedir='DATA', filesize=None, sample_size=None, max_files=1000, **kwargs):
+    def __init__(self, savedir='DATA', filesize=None, sample_size=None, max_files=1000, erase_stale=True, **kwargs):
         if filesize and sample_size: filesize = math.ceil(filesize / sample_size) * sample_size
         self.filesize = filesize
         self.sample_size = sample_size
@@ -144,11 +144,19 @@ class StreamDataFile(io.BufferedWriter):
         self.total_bytes = 0
         self.sequence = 0
         self.filepath = self._filepath()
+        if filesize and erase_stale: self._erase_stale_sequences()
+
         super().__init__(io.FileIO(self.filepath, 'wb'))
 
     @property
     def name(self):
         return self.filepath
+
+    def _erase_stale_sequences(self):
+        """Erase prior sequence files for this stream name"""
+        pattern = self.filepath.name.replace('.000.', '.*.', 1)
+        for path in Path(self.savedir).glob(pattern):
+            path.unlink(missing_ok=True)
 
     def _filepath(self):
         os.makedirs(self.savedir, exist_ok=True)
