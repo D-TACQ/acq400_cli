@@ -200,7 +200,7 @@ class Plotter:
 
     def __gen_timebase(self, units, sources):
         """Generate timebase for sources"""
-        print(units)
+        logging.info(f"X-axis timebase: {units.lower()}")
         timebase = []
         if units == 'SECONDS':
             if not self.sample_rate and all(source.sample_rate is None for source in sources):

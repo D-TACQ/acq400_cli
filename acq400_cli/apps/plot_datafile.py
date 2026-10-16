@@ -19,7 +19,7 @@ def main(args):
     else:
         specs = []
 
-        if args.plot_by == 'channel':
+        if args.facet_by == 'channel':
             for chan in args.chan:
                 specs.append(FigSpec.from_spec({
                     'chan': [chan],
@@ -33,7 +33,7 @@ def main(args):
                     'mask': args.mask,
                 }))
 
-        if args.plot_by == 'source':
+        if args.facet_by == 'source':
             for index in range(len(sources)):
                 specs.append(FigSpec.from_spec({
                     'chan': args.chan,
@@ -83,7 +83,7 @@ def get_parser():
     parser.add_argument('--chan', '--chans', default=[1], type=ArgTypes.list_of_channels, help='Channels to plot')
     parser.add_argument('--spad', default=[], type=ArgTypes.list_of_channels, help='Spad Channels to plot')
 
-    parser.add_argument('--plot_by', default='channel', choices=['source', 'channel'], help='Plot by source or by channel')
+    parser.add_argument('--facet_by', '--plot_by', default='channel', choices=['channel', 'source'], help='Split figures by channel (one row per chan) or source (one figure per source)')
 
     parser.add_argument('--format', default=None, help='Set format fallback if file lacks tag')
 
